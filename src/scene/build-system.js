@@ -10,6 +10,8 @@ import { textureStore } from './texture-store.js';
 
 // 就地填充 system：{ scene, root, bodyGroups, sunGroup, starfield, labelObjects }
 export async function buildSystem(system, labelRenderer, tier){
+  // 并行预载所有贴图（避免逐张串行下载卡住启动，公网/手机下提速明显）
+  Promise.all(['sun','mercury','venus','earth','mars','jupiter','saturn','uranus','neptune','moon'].map(id=>textureStore.surface(id).catch(()=>{})));
   system.scene = system.scene || new THREE.Scene();
   system.scene.background = new THREE.Color(0x05070d);
   system.root = new THREE.Group(); system.scene.add(system.root);

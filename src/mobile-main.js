@@ -92,6 +92,8 @@ async function boot(){
   ["pointerdown","touchstart","wheel","keydown"].forEach(ev=>window.addEventListener(ev, ()=>{ lastInteract=performance.now(); }, {passive:true}));
   const onLoopError=(err)=>{ console.error("loop",err); try{ renderer.setAnimationLoop(null); }catch(e){} };
   quality.startAutoSelect();
+  let bootHidden=false;
+  const hideBoot=()=>{ const b=document.getElementById("boot-screen"); if(b) b.style.display="none"; };
   renderer.setAnimationLoop((now)=>{
     try{
       const dt=Math.min((now-last)/1000,0.1); last=now;
@@ -101,6 +103,7 @@ async function boot(){
       const idle = !clock.running && currentId==="orbit-view" && camStr===lastCamStr && (now-lastInteract>600);
       lastCamStr = camStr;
       if(!idle) current.render();
+      if(!bootHidden && renderer.info.render.calls>0){ bootHidden=true; hideBoot(); }
     }catch(err){ onLoopError(err); }
   });
 

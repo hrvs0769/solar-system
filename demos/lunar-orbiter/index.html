@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='26' fill='%23cccccc'/%3E%3Cellipse cx='50' cy='50' rx='44' ry='14' fill='none' stroke='%23ffb454' stroke-width='5'/%3E%3C/svg%3E" />
+<title>环月飞行器 · 轨道力学沙盒</title>
+<style>
+:root{
+  --bg:#0a0e1a; --panel:rgba(12,18,36,.84); --panel-solid:#0c1224;
+  --text:#e8ecf5; --muted:#9aa7bd; --accent:#ffb454; --accent2:#5aa0ff;
+  --ok:#57d38a; --warn:#ffb454; --err:#ff6b6b;
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:16px;user-select:none}
+#app{position:fixed;inset:0}
+#app canvas{display:block;width:100%;height:100%}
+
+#ui{position:fixed;inset:0;pointer-events:none}
+#ui>*{pointer-events:auto}
+
+#topbar{position:absolute;top:0;left:0;right:0;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(180deg,rgba(8,12,24,.92),rgba(8,12,24,0))}
+#topbar .brand{font-weight:700;font-size:18px;color:var(--accent);margin-right:6px;white-space:nowrap}
+#topbar .sub{color:var(--muted);font-size:13px;white-space:nowrap}
+.tabs{display:flex;gap:6px;margin-left:14px;flex-wrap:wrap}
+.tab{padding:8px 14px;border-radius:var(--radius);background:var(--panel);border:1px solid rgba(255,255,255,.08);color:var(--muted);cursor:pointer;font-size:14px;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--accent);color:#1a1208;border-color:var(--accent);font-weight:600}
+
+#hud{position:absolute;left:14px;top:74px;width:270px;background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:12px 14px}
+#hud h3{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:8px;letter-spacing:.5px}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;font-size:14px}
+.row .k{color:var(--muted);font-size:13px}
+.row .v{font-variant-numeric:tabular-nums;font-weight:600}
+.row .v small{color:var(--muted);font-weight:400;font-size:11px;margin-left:2px}
+#orbit-type{margin-top:10px;padding:9px 10px;border-radius:8px;text-align:center;font-weight:600;font-size:14px;background:rgba(255,255,255,.06)}
+#orbit-type.capture{background:rgba(87,211,138,.16);color:var(--ok)}
+#orbit-type.escape{background:rgba(255,107,107,.16);color:var(--err)}
+#orbit-type.crash{background:rgba(255,180,84,.18);color:var(--warn)}
+
+#note{position:absolute;right:14px;top:74px;width:300px;background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:12px 14px;font-size:13px;line-height:1.7;color:var(--muted)}
+#note b{color:var(--text);font-weight:600}
+#note .hl{color:var(--accent)}
+#note ul{margin:6px 0 0 16px}
+#note li{margin:3px 0}
+#note hr{border:none;border-top:1px solid rgba(255,255,255,.08);margin:10px 0}
+
+#bottom{position:absolute;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 16px;background:linear-gradient(0deg,rgba(8,12,24,.94),rgba(8,12,24,0))}
+.grp{display:flex;align-items:center;gap:8px}
+.grp label{color:var(--muted);font-size:13px;white-space:nowrap}
+.btn{padding:9px 14px;border-radius:var(--radius);background:var(--panel);border:1px solid rgba(255,255,255,.08);color:var(--text);cursor:pointer;font-size:14px;min-height:40px;white-space:nowrap}
+.btn:hover{background:rgba(255,255,255,.1)}
+.btn.primary{background:var(--accent);color:#1a1208;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{background:#ffc470}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+input[type=range]{width:130px;accent-color:var(--accent)}
+.val{font-variant-numeric:tabular-nums;font-size:13px;color:var(--text);min-width:74px;display:inline-block}
+select{background:var(--panel-solid);color:var(--text);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius);padding:8px 10px;font-size:14px;min-height:40px}
+
+#fire{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:8px;background:var(--panel);border:1px solid rgba(255,180,84,.4);border-radius:14px;padding:14px 22px}
+#fire.on{display:flex}
+#fire .tip{font-size:13px;color:var(--muted);max-width:330px;text-align:center;line-height:1.6}
+#fire .tip b{color:var(--accent)}
+#fire .btn{font-size:16px;padding:12px 30px;background:var(--accent);color:#1a1208;font-weight:700;border-color:var(--accent)}
+#fire .btn:hover{background:#ffc470}
+#fire .btn:disabled{opacity:.4}
+
+#toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(12,18,36,.96);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:18px 30px;font-size:17px;text-align:center;display:none;max-width:70vw;line-height:1.6}
+#toast.on{display:block}
+#toast .big{font-size:20px;font-weight:700;margin-bottom:6px}
+#toast.ok{border-color:var(--ok)} #toast.ok .big{color:var(--ok)}
+#toast.bad{border-color:var(--err)} #toast.bad .big{color:var(--err)}
+#toast .sub2{font-size:14px;color:var(--muted);margin-top:8px}
+
+#badge{position:absolute;right:14px;bottom:96px;font-size:12px;color:var(--muted);background:var(--panel);padding:7px 11px;border-radius:8px;border-left:2px solid var(--accent2);line-height:1.6}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ui">
+  <div id="topbar">
+    <span class="brand">环月飞行器</span>
+    <span class="sub">轨道力学沙盒 · 真实引力积分</span>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-mode="free">自由设定</button>
+      <button class="tab" data-mode="brake">近月制动挑战</button>
+    </div>
+  </div>
+
+  <div id="hud">
+    <h3>实时轨道数据</h3>
+    <div class="row"><span class="k">距月心</span><span class="v" id="d-r">—</span></div>
+    <div class="row"><span class="k">轨道高度</span><span class="v" id="d-alt">—</span></div>
+    <div class="row"><span class="k">当前速度</span><span class="v" id="d-v">—</span></div>
+    <div class="row"><span class="k">环绕周期</span><span class="v" id="d-T">—</span></div>
+    <div class="row"><span class="k">偏心率 e</span><span class="v" id="d-e">—</span></div>
+    <div class="row"><span class="k">近月点</span><span class="v" id="d-rp">—</span></div>
+    <div class="row"><span class="k">远月点</span><span class="v" id="d-ra">—</span></div>
+    <div id="orbit-type">—</div>
+  </div>
+
+  <div id="note"></div>
+
+  <div id="fire">
+    <div class="tip" id="fire-tip"></div>
+    <button class="btn" id="btn-fire">点火制动</button>
+  </div>
+
+  <div id="badge">飞行器与尾焰尺寸已放大示意<br>轨道与速度均为真实数值</div>
+
+  <div id="bottom">
+    <div class="grp" id="g-alt"><label>初始高度</label><input type="range" id="s-alt" min="50" max="4000" step="50" value="200"><span class="val" id="v-alt"></span></div>
+    <div class="grp" id="g-spd"><label>初速度</label><input type="range" id="s-spd" min="0.6" max="2.8" step="0.01" value="1.63"><span class="val" id="v-spd"></span></div>
+    <button class="btn primary" id="btn-launch">发射</button>
+    <div class="grp"><label>时间倍速</label>
+      <select id="sel-rate">
+        <option value="20">×20</option>
+        <option value="100" selected>×100</option>
+        <option value="300">×300</option>
+        <option value="800">×800</option>
+      </select>
+    </div>
+    <div class="grp">
+      <button class="btn" id="btn-pause">暂停</button>
+      <button class="btn" id="btn-view">跟随飞行器</button>
+      <button class="btn" id="btn-reset">复位视角</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+
+/* ==========================================================
+   物理常量（NASA/JPL 月球数据）
+   ========================================================== */
+const GM     = 4902.8;      // 月球引力常数 GM，km³/s²
+const R_MOON = 1737.4;      // 月球半径，km
+const S      = 0.01;        // 1 场景单位 = 100 km
+const DT     = 0.5;         // 物理积分步长（秒），固定保证精度
+const vCirc  = r => Math.sqrt(GM / r);          // 圆轨道速度
+const vEsc   = r => Math.sqrt(2 * GM / r);      // 逃逸速度
+
+/* ==========================================================
+   向量工具与轨道力学
+   ========================================================== */
+const V = {
+  add:(a,b)=>({x:a.x+b.x, y:a.y+b.y, z:a.z+b.z}),
+  sub:(a,b)=>({x:a.x-b.x, y:a.y-b.y, z:a.z-b.z}),
+  mul:(a,k)=>({x:a.x*k,   y:a.y*k,   z:a.z*k}),
+  len:a=>Math.hypot(a.x,a.y,a.z),
+  cross:(a,b)=>({x:a.y*b.z-a.z*b.y, y:a.z*b.x-a.x*b.z, z:a.x*b.y-a.y*b.x}),
+  norm:a=>{const l=Math.hypot(a.x,a.y,a.z)||1; return {x:a.x/l, y:a.y/l, z:a.z/l};},
+};
+
+// 引力加速度 a = -GM·r / |r|³
+function accel(p){
+  const r2 = p.x*p.x + p.y*p.y + p.z*p.z;
+  const r  = Math.sqrt(r2);
+  const k  = -GM / (r2 * r);
+  return { x:p.x*k, y:p.y*k, z:p.z*k };
+}
+
+// 速度 Verlet 积分（辛积分器，长期能量稳定，适合轨道力学）
+function integrate(st, dt){
+  const a0 = accel(st.p);
+  const vH = { x:st.v.x + a0.x*dt/2, y:st.v.y + a0.y*dt/2, z:st.v.z + a0.z*dt/2 };
+  const pN = { x:st.p.x + vH.x*dt,   y:st.p.y + vH.y*dt,   z:st.p.z + vH.z*dt   };
+  const a1 = accel(pN);
+  const vN = { x:vH.x + a1.x*dt/2,   y:vH.y + a1.y*dt/2,   z:vH.z + a1.z*dt/2   };
+  return { p:pN, v:vN };
+}
+
+// 由状态反解轨道六要素（只需 a / e / 近远月点 / 周期）
+function elements(p, v){
+  const r  = V.len(p);
+  const v2 = v.x*v.x + v.y*v.y + v.z*v.z;
+  const eps = v2/2 - GM/r;                 // 比机械能
+  const h   = V.len(V.cross(p, v));        // 比角动量
+  let   a   = -GM/(2*eps);                 // 半长轴（逃逸轨道为负/无穷）
+  let e = Math.sqrt(Math.max(0, 1 + 2*eps*h*h/(GM*GM)));
+  if(!isFinite(e)) e = 1;
+  a = isFinite(a) ? a : Infinity;
+  // 近/远月点用 h²/(GM(1±e)) 计算：比 a(1±e) 在 e→1 时数值稳定得多
+  const rp = h*h/(GM*(1+e));
+  const ra = e < 1 ? h*h/(GM*(1-e)) : Infinity;
+  const T  = eps < 0 ? 2*Math.PI*Math.sqrt(a*a*a/GM) : Infinity;
+  return { r, v:Math.sqrt(v2), eps, a, e, rp, ra, T };
+}
+
+// 轨道类型判定
+function classify(el){
+  if(el.rp <= R_MOON) return { key:'crash',   text:'撞击月球' };
+  if(el.e >= 1)       return { key:'escape',  text:'逃逸（双曲线）' };
+  if(el.e < 0.03)     return { key:'capture', text:'近圆轨道 · 稳定环绕' };
+  return { key:'capture', text:'椭圆轨道 · 已被捕获' };
+}
+
+/* ==========================================================
+   场景搭建
+   ========================================================== */
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias:true, logarithmicDepthBuffer:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.setSize(innerWidth, innerHeight);
+app.appendChild(renderer.domElement);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.01, 20000);
+
+// —— 月球 ——
+const moonGroup = new THREE.Group();
+scene.add(moonGroup);
+const MOON_R = R_MOON * S;                       // 场景单位 ≈ 17.37
+const moonMat = new THREE.MeshStandardMaterial({ color:0x9a9a96, roughness:0.95, metalness:0.0 });
+const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(MOON_R, 96, 96), moonMat);
+moonGroup.add(moonMesh);
+
+// 月球贴图：优先用项目里的真实月面图，失败则程序化兜底
+const texLoader = new THREE.TextureLoader();
+texLoader.load('../../public/textures/2k_moon.jpg', t=>{
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  moonMat.map = t; moonMat.color.set(0xffffff); moonMat.needsUpdate = true;
+}, undefined, ()=>{ /* 兜底：保持程序化灰 */ });
+
+// —— 光照（太阳在 +X 方向）——
+const sun = new THREE.DirectionalLight(0xfff4e6, 2.6);
+sun.position.set(300, 90, 120);
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0x2a3348, 1.1));
+
+// —— 星场 ——
+(function stars(){
+  const N = 4200, pos = new Float32Array(N*3);
+  let seed = 20260903;
+  const rnd = ()=> (seed = (seed*1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for(let i=0;i<N;i++){
+    const u = rnd()*2-1, th = rnd()*Math.PI*2, r = 900 + rnd()*600, s = Math.sqrt(1-u*u);
+    pos[i*3] = r*s*Math.cos(th); pos[i*3+1] = r*u; pos[i*3+2] = r*s*Math.sin(th);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color:0xdfe6f2, size:1.5, sizeAttenuation:false, transparent:true, opacity:.85 })));
+})();
+
+// —— 飞行器（尺寸为可见性夸张放大）——
+const craft = new THREE.Group();
+const SC = 0.42;                                  // 飞行器视觉尺寸
+const bodyMesh = new THREE.Mesh(
+  new THREE.CylinderGeometry(SC*0.28, SC*0.28, SC*1.15, 16),
+  new THREE.MeshStandardMaterial({ color:0xffc861, roughness:.42, metalness:.75 })
+);
+bodyMesh.rotation.z = Math.PI/2;
+craft.add(bodyMesh);
+[-1,1].forEach(s=>{
+  const panel = new THREE.Mesh(
+    new THREE.BoxGeometry(SC*0.85, SC*0.04, SC*0.5),
+    new THREE.MeshStandardMaterial({ color:0x2b4a8f, roughness:.35, metalness:.6, emissive:0x0a1836 })
+  );
+  panel.position.x = -SC*0.15; panel.position.z = s*SC*0.62;
+  craft.add(panel);
+});
+// 尾焰（制动时显示）
+const flame = new THREE.Mesh(
+  new THREE.ConeGeometry(SC*0.22, SC*1.5, 14),
+  new THREE.MeshBasicMaterial({ color:0xff9b3d, transparent:true, opacity:.9 })
+);
+flame.rotation.z = Math.PI/2;      // 锥尖朝 +X（与制动方向相反）
+flame.position.x = SC*1.3;
+flame.visible = false;
+craft.add(flame);
+scene.add(craft);
+
+// —— 轨迹与预测轨道 ——
+const TRAIL_MAX = 2600;
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_MAX*3), 3));
+trailGeo.setDrawRange(0, 0);
+const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color:0x5aa0ff, transparent:true, opacity:.75 }));
+scene.add(trail);
+
+const PRED_MAX = 2400;
+const predGeo = new THREE.BufferGeometry();
+predGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PRED_MAX*3), 3));
+predGeo.setDrawRange(0, 0);
+const pred = new THREE.Line(predGeo, new THREE.LineDashedMaterial({ color:0xffb454, dashSize:0.9, gapSize:0.7, transparent:true, opacity:.5 }));
+scene.add(pred);
+
+// 近月点标记
+const periMark = new THREE.Mesh(
+  new THREE.SphereGeometry(0.28, 12, 12),
+  new THREE.MeshBasicMaterial({ color:0x57d38a })
+);
+periMark.visible = false;
+scene.add(periMark);
+
+/* ==========================================================
+   自写轨道控制器（拖动旋转 / 滚轮缩放 / 右键平移）
+   ========================================================== */
+const ctrl = { target:new THREE.Vector3(0,0,0), dist:62, theta:0.9, phi:1.15, follow:false };
+const el = renderer.domElement;
+let drag=null, lastPos=new THREE.Vector2();
+el.addEventListener('pointerdown', e=>{ drag = { x:e.clientX, y:e.clientY, button:e.button }; });
+el.addEventListener('pointerup',   ()=>{ drag=null; });
+el.addEventListener('pointermove', e=>{
+  if(!drag) return;
+  const dx = e.clientX-drag.x, dy = e.clientY-drag.y;
+  drag.x = e.clientX; drag.y = e.clientY;
+  if(drag.button===0){ ctrl.theta -= dx*0.005; ctrl.phi = Math.max(0.06, Math.min(Math.PI-0.06, ctrl.phi - dy*0.005)); }
+});
+el.addEventListener('wheel', e=>{ e.preventDefault(); ctrl.dist = Math.max(MOON_R*1.15, Math.min(900, ctrl.dist * (1 + Math.sign(e.deltaY)*0.09))); }, {passive:false});
+el.addEventListener('contextmenu', e=>e.preventDefault());
+
+function updateCamera(){
+  if(ctrl.follow && state.p){
+    ctrl.target.set(state.p.x*S, state.p.y*S, state.p.z*S);
+  } else {
+    ctrl.target.lerp(new THREE.Vector3(0,0,0), 0.2);
+  }
+  const sp = Math.sin(ctrl.phi);
+  camera.position.set(
+    ctrl.target.x + ctrl.dist*sp*Math.sin(ctrl.theta),
+    ctrl.target.y + ctrl.dist*Math.cos(ctrl.phi),
+    ctrl.target.z + ctrl.dist*sp*Math.cos(ctrl.theta)
+  );
+  camera.lookAt(ctrl.target);
+}
+
+/* ==========================================================
+   仿真状态
+   ========================================================== */
+let state = { p:{x:0,y:0,z:0}, v:{x:0,y:0,z:0} };   // km, km/s
+let mode = 'free';         // free | brake
+let running = true;
+let rate = 100;            // 时间倍速
+let crashed = false, escaped = false, captured = false;
+let elapsed = 0;           // 已模拟秒数
+let trailCount = 0, trailAcc = 0;
+let predTimer = 0;
+let braking = 0;           // 制动剩余显示帧
+let brakeUsed = false;     // 制动挑战中是否已点火
+
+function resetTrail(){ trailCount = 0; trailGeo.setDrawRange(0,0); }
+function pushTrail(){
+  if(trailCount >= TRAIL_MAX) return;
+  const arr = trailGeo.attributes.position.array;
+  arr[trailCount*3] = state.p.x*S; arr[trailCount*3+1] = state.p.y*S; arr[trailCount*3+2] = state.p.z*S;
+  trailCount++;
+  trailGeo.setDrawRange(0, trailCount);
+  trailGeo.attributes.position.needsUpdate = true;
+}
+
+// 预测轨道：从当前状态向前积分，画虚线
+function updatePrediction(){
+  let st = { p:{...state.p}, v:{...state.v} };
+  const arr = predGeo.attributes.position.array;
+  let n = 0, hitMoon = false;
+  const stepSkip = 6;                       // 每 6 个物理步取 1 点
+  for(let i=0; i<PRED_MAX*stepSkip; i++){
+    st = integrate(st, DT);
+    if(V.len(st.p) <= R_MOON){ hitMoon = true; break; }
+    if(i % stepSkip === 0){
+      arr[n*3] = st.p.x*S; arr[n*3+1] = st.p.y*S; arr[n*3+2] = st.p.z*S;
+      n++;
+      if(n >= PRED_MAX) break;
+    }
+    if(V.len(st.p) > 120000) break;         // 飞太远，停止预测
+  }
+  predGeo.setDrawRange(0, n);
+  predGeo.attributes.position.needsUpdate = true;
+  pred.computeLineDistances();
+  return hitMoon;
+}
+
+/* ==========================================================
+   发射场景
+   ========================================================== */
+function launchFree(){
+  const alt = +document.getElementById('s-alt').value;
+  const spd = +document.getElementById('s-spd').value;
+  const r = R_MOON + alt;
+  // 初始位置在 +X 轴，速度沿 +Z（垂直于半径）→ 正圆轨道方向
+  state = { p:{x:r, y:0, z:0}, v:{x:0, y:0, z:spd} };
+  resetTrail(); elapsed = 0; crashed = escaped = captured = false;
+  running = true; brakeUsed = false;
+  hideToast();
+}
+
+// 近月制动挑战：探测器沿双曲线从地球方向接近月球，近月点约 200 km
+// 用角动量守恒反解初速度：给定起点 r0、无穷远剩余速度 vInf、目标近月点 rp
+function launchBrake(){
+  const r0 = 5000;                 // 起点距月心（km）——够近，几秒钟就飞到近月点
+  const vInf = 0.8;                // 双曲线剩余速度（典型地月转移量级）
+  const rpTarget = R_MOON + 200;   // 目标近月点高度 200 km
+
+  const v0 = Math.sqrt(vInf*vInf + 2*GM/r0);              // 起点速度（能量守恒）
+  const vp = Math.sqrt(vInf*vInf + 2*GM/rpTarget);        // 近月点速度
+  const h  = rpTarget * vp;                               // 比角动量（角动量守恒）
+  const sinT = Math.min(0.995, h/(r0*v0));                // 速度与径向的夹角
+  const cosT = Math.sqrt(1 - sinT*sinT);
+
+  // 起点在 +X 轴；速度 = 朝内径向分量 + 侧向分量（形成掠月双曲线）
+  state = { p:{ x:r0, y:0, z:0 }, v:{ x:-v0*cosT, y:0, z:v0*sinT } };
+  resetTrail(); elapsed = 0; crashed = escaped = captured = false;
+  running = true; brakeUsed = false; braking = 0;
+  hideToast();
+}
+
+function launch(){ mode==='free' ? launchFree() : launchBrake(); }
+
+// —— 求解"最优制动量"：使制动后的近月点恰好等于目标高度 ——
+// 关键物理：不在近月点时，速度含有径向俯冲分量，沿速度反方向制动会同时减小切向分量，
+// 导致近月点被压低。所以"减到圆轨道速度"在高空反而是过量制动（会坠月）。
+// 近月点越低 → 需要的制动量越小；越接近近月点 → 制动效率越高、轨道越圆。
+const TARGET_RP = R_MOON + 100;            // 目标：捕获后近月点高度 100 km
+const DV_MAX    = 2.5;                     // 制动能力上限（km/s）
+function solveBrakeDv(){
+  const vn = V.norm(state.v);
+  const rpAfter = dv => elements(state.p, V.sub(state.v, V.mul(vn, dv))).rp;
+  if(rpAfter(0) <= TARGET_RP) return null;          // 不制动就已经撞月，无解
+  if(rpAfter(DV_MAX) > TARGET_RP) return DV_MAX;    // 减到底仍偏高
+  let lo = 0, hi = DV_MAX;                          // rp 随 dv 单调递减，二分求解
+  for(let i=0;i<44;i++){
+    const mid = (lo+hi)/2;
+    if(rpAfter(mid) > TARGET_RP) lo = mid; else hi = mid;
+  }
+  return (lo+hi)/2;
+}
+
+// 执行制动：沿速度反方向减速 dv
+function fireBrake(dv){
+  if(brakeUsed || crashed || escaped) return;
+  brakeUsed = true;
+  const vn = V.norm(state.v);
+  state.v = V.sub(state.v, V.mul(vn, dv));
+  braking = 26;                              // 尾焰显示帧数
+  const el2 = elements(state.p, state.v);
+  const cls = classify(el2);
+  if(cls.key === 'capture'){
+    captured = true;
+    const round = el2.e < 0.1;
+    showToast('ok', '捕获成功！',
+      `减速 ${dv.toFixed(2)} km/s，进入${round?'近圆':'椭圆'}轨道<br>` +
+      `近月点 ${(el2.rp-R_MOON).toFixed(0)} km · 远月点 ${(el2.ra-R_MOON).toFixed(0)} km · ` +
+      `周期 ${(el2.T/3600).toFixed(2)} 小时`,
+      round ? '教科书级的近月制动 —— 探测器被月球抓住了'
+            : '轨道有点椭：越接近最近点点火，越省燃料、轨道越圆');
+  } else if(cls.key === 'crash'){
+    showToast('bad', '坠向月面',
+      `减速 ${dv.toFixed(2)} km/s 后，轨道近月点已低于月面<br>探测器将撞上月球`,
+      '在俯冲速度更小、更接近最近点时再点火');
+  } else {
+    showToast('bad', '没能被捕获',
+      '制动量不足以让月球抓住它，探测器将沿双曲线一去不返',
+      '加大制动量，并在最接近月球时点火');
+  }
+}
+
+/* ==========================================================
+   HUD 与提示
+   ========================================================== */
+const $ = id => document.getElementById(id);
+const fmt = (n, d=2) => (isFinite(n) ? n.toFixed(d) : '—');
+
+function updateHUD(){
+  const e = elements(state.p, state.v);
+  const cls = classify(e);
+  $('d-r').innerHTML   = fmt(e.r, 0) + ' <small>km</small>';
+  $('d-alt').innerHTML = fmt(e.r - R_MOON, 0) + ' <small>km</small>';
+  $('d-v').innerHTML   = fmt(e.v, 3) + ' <small>km/s</small>';
+  $('d-T').innerHTML   = isFinite(e.T) ? (e.T/3600).toFixed(2) + ' <small>小时</small>' : '∞ <small>逃逸</small>';
+  $('d-e').textContent = fmt(e.e, 3);
+  $('d-rp').innerHTML  = (e.rp>0 ? fmt(e.rp-R_MOON,0) : '—') + ' <small>km</small>';
+  $('d-ra').innerHTML  = isFinite(e.ra) && e.ra>0 ? fmt(e.ra-R_MOON,0) + ' <small>km</small>' : '∞';
+  const ot = $('orbit-type');
+  ot.textContent = cls.text;
+  ot.className = cls.key;
+
+  // 近月点标记
+  if(isFinite(e.rp) && e.rp > R_MOON && e.rp < 60000){
+    const dir = V.norm(V.cross(V.cross(state.p, state.v), state.p));
+    periMark.position.set(-dir.x*e.rp*S, -dir.y*e.rp*S, -dir.z*e.rp*S);
+    periMark.visible = true;
+  } else periMark.visible = false;
+
+  // 制动挑战提示
+  if(mode === 'brake'){
+    const vc = vCirc(V.len(state.p));
+    const gap = e.v - vc;
+    const tip = $('fire-tip');
+    if(brakeUsed){
+      tip.innerHTML = captured
+        ? '已点火。观察探测器如何被月球引力弯成闭合轨道。'
+        : '已点火，但这次没能捕获 —— 点「复位」重来一次。';
+      $('btn-fire').disabled = true;
+    } else {
+      const alt = e.r - R_MOON;
+      const vr = (state.p.x*state.v.x + state.p.y*state.v.y + state.p.z*state.v.z) / e.r;
+      const closing = vr < 0;
+      const toPeri  = alt - (e.rp - R_MOON);       // 距最近点还差多少高度
+      const urgent  = closing && toPeri < 220;     // 接近最近点 = 最佳点火窗口
+      const dv = solveBrakeDv();
+      const tip = $('fire-tip');
+      if(dv == null){
+        tip.innerHTML = `高度 <b>${alt.toFixed(0)}</b> km —— 轨道已经指向月面，`+
+                        `<span style="color:var(--err)">再怎么减速都会撞上去</span>。`;
+        $('btn-fire').disabled = true;
+      } else {
+        const after = elements(state.p, V.sub(state.v, V.mul(V.norm(state.v), dv)));
+        tip.innerHTML =
+          `高度 <b>${alt.toFixed(0)}</b> km · 距最近点还有 <b>${Math.max(0,toPeri).toFixed(0)}</b> km<br>` +
+          `此时点火需减速 <b>${dv.toFixed(2)}</b> km/s，将进入 ` +
+          (after.e < 0.1 ? '<b style="color:var(--ok)">近圆轨道</b>'
+                         : `椭圆轨道（e=${after.e.toFixed(2)}）`) + '<br>' +
+          (urgent ? '<b style="color:var(--ok)">就是现在 —— 点火！</b>'
+                  : (closing ? '还在俯冲，越接近最近点越省燃料、轨道越圆'
+                             : '<span style="color:var(--err)">正在远离，已错过最佳窗口</span>'));
+        const btn = $('btn-fire');
+        btn.disabled = false;
+        btn.style.background = urgent ? 'var(--ok)' : '';
+        btn.style.color = urgent ? '#08240f' : '';
+        btn.textContent = urgent ? '立即点火制动' : '点火制动';
+      }
+    }
+  }
+}
+
+function showToast(kind, big, msg, sub){
+  const t = $('toast');
+  t.className = 'on ' + kind;
+  t.innerHTML = `<div class="big">${big}</div><div>${msg}</div>` + (sub?`<div class="sub2">${sub}</div>`:'');
+}
+function hideToast(){ $('toast').className = ''; $('toast').innerHTML = ''; }
+
+const NOTES = {
+  free: `<b>速度决定轨道形状</b><br>
+    在给定高度上，只有一个"刚刚好"的速度能让飞行器稳定环绕。
+    <ul>
+      <li>太慢 → <span class="hl">撞向月球</span></li>
+      <li>太快 → <span class="hl">挣脱引力飞走</span></li>
+      <li>刚刚好 → <span class="hl">圆轨道</span></li>
+    </ul>
+    <hr>试试：高度 200 km 时，圆轨道速度约 <b>1.59</b> km/s，
+    逃逸速度约 <b>2.25</b> km/s。把它们之间的速度都试一遍，
+    看轨道如何从"砸下去"一点点变成"飞出去"。
+    <hr>拖动鼠标旋转，滚轮缩放。`,
+  brake: `<b>近月制动：最惊险的几分钟</b><br>
+    探测器从地球飞来时，相对月球的速度高达 <b>2 km/s 以上</b>，
+    月球根本"抓不住"它 —— 它会绕过月球，一去不返。
+    <ul>
+      <li>必须在<span class="hl">最接近月球的那一刻</span>点火减速</li>
+      <li>速度要降到 <b>1.6 km/s</b> 左右才能被捕获</li>
+      <li>早了、晚了、减多减少，都会失败</li>
+    </ul>
+    <hr>这就是嫦娥、阿波罗任务里最紧张的环节。
+    你来当一次飞行控制员。`,
+};
+
+/* ==========================================================
+   UI 绑定
+   ========================================================== */
+function syncLabels(){
+  $('v-alt').textContent = $('s-alt').value + ' km';
+  $('v-spd').textContent = (+$('s-spd').value).toFixed(2) + ' km/s';
+}
+$('s-alt').addEventListener('input', ()=>{ syncLabels(); });
+$('s-spd').addEventListener('input', ()=>{ syncLabels(); });
+$('btn-launch').addEventListener('click', launch);
+$('sel-rate').addEventListener('change', e=>{ rate = +e.target.value; });
+$('btn-pause').addEventListener('click', e=>{ running = !running; e.target.textContent = running ? '暂停' : '继续'; });
+$('btn-view').addEventListener('click', e=>{ ctrl.follow = !ctrl.follow; e.target.textContent = ctrl.follow ? '跟随中' : '跟随飞行器'; });
+$('btn-reset').addEventListener('click', ()=>{ ctrl.dist = 62; ctrl.theta = 0.9; ctrl.phi = 1.15; ctrl.follow = false; $('btn-view').textContent = '跟随飞行器'; });
+$('btn-fire').addEventListener('click', ()=>{
+  const dv = solveBrakeDv();
+  if(dv == null){
+    showToast('bad', '来不及了', '轨道已经指向月面，再怎么减速都会撞上去', '点底部的「重来一次」再试');
+    return;
+  }
+  fireBrake(dv);
+});
+
+document.querySelectorAll('#tabs .tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#tabs .tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    $('note').innerHTML = NOTES[mode];
+    const isFree = mode === 'free';
+    $('g-alt').style.display = isFree ? '' : 'none';
+    $('g-spd').style.display = isFree ? '' : 'none';
+    $('fire').classList.toggle('on', !isFree);
+    $('btn-launch').textContent = isFree ? '发射' : '重来一次';
+    if(!isFree){ rate = 300; $('sel-rate').value = '300'; }   // 制动挑战默认提速，少等待
+    hideToast();
+    launch();
+  });
+});
+
+// 空格暂停
+window.addEventListener('keydown', e=>{
+  if(e.code === 'Space'){ e.preventDefault(); running = !running; $('btn-pause').textContent = running ? '暂停' : '继续'; }
+});
+window.addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ==========================================================
+   主循环
+   ========================================================== */
+let last = performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dtReal = Math.min((now - last)/1000, 0.1); last = now;
+
+  if(running && !crashed && !escaped){
+    // 本帧要模拟的秒数
+    let simSec = rate * dtReal;
+    let steps = Math.min(Math.ceil(simSec / DT), 400);
+    for(let i=0;i<steps;i++){
+      state = integrate(state, DT);
+      elapsed += DT;
+      trailAcc += DT;
+      if(trailAcc >= 4){ pushTrail(); trailAcc = 0; }   // 每 4 秒记一个轨迹点
+
+      const r = V.len(state.p);
+      if(r <= R_MOON){
+        crashed = true;
+        showToast('bad', '撞月了',
+          `速度不足，月球引力把飞行器拉向表面<br>撞点速度 ${V.len(state.v).toFixed(2)} km/s`,
+          '提高一点初速度试试');
+        break;
+      }
+      if(r > 150000 && elements(state.p, state.v).e >= 1){
+        escaped = true;
+        showToast('bad', '飞走了',
+          '速度超过逃逸速度，月球再也抓不住它<br>这条轨道是双曲线，永不回头',
+          '降低初速度');
+        break;
+      }
+    }
+  }
+
+  // 制动尾焰
+  if(braking > 0){ braking--; flame.visible = (braking % 4 < 2); } else flame.visible = false;
+
+  // 飞行器位姿：+X 轴朝向速度方向
+  if(state.p){
+    craft.position.set(state.p.x*S, state.p.y*S, state.p.z*S);
+    const vn = V.norm(state.v);
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0), new THREE.Vector3(vn.x, vn.y, vn.z));
+    craft.quaternion.copy(q);
+  }
+  moonMesh.rotation.y += 0.00004;   // 极缓慢自转（视觉用）
+
+  // 预测轨道每 0.35 秒重算一次，避免每帧开销
+  predTimer += dtReal;
+  if(predTimer > 0.35){ updatePrediction(); predTimer = 0; updateHUD(); }
+
+  updateCamera();
+  renderer.render(scene, camera);
+}
+
+/* ==========================================================
+   启动
+   ========================================================== */
+$('note').innerHTML = NOTES.free;
+syncLabels();
+launchFree();
+updatePrediction();
+updateHUD();
+requestAnimationFrame(loop);
+
+// 便于自动化测试读取状态
+window.__LO = { get state(){ return state; }, get elements(){ return elements(state.p, state.v); },
+                get flags(){ return { crashed, escaped, captured, mode }; }, launch, fireBrake, GM, R_MOON };
+</script>
+</body>
+</html>

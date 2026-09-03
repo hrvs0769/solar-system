@@ -199,8 +199,12 @@ async function boot(){
     const idle = !clock.running && currentId==='orbit-view' && camStr===lastCamStr && (now-lastInteract>600);
     lastCamStr = camStr;
     if(!idle) current.render();
+    // 第一帧绘制后隐藏启动画面
+    if(!bootHidden && renderer.info.render.calls>0){ bootHidden=true; hideBoot(); }
   };
   quality.startAutoSelect();
+  const hideBoot=()=>{ const b=document.getElementById('boot-screen'); if(b) b.style.display='none'; };
+  let bootHidden=false;
   renderer.setAnimationLoop((now)=>{ try{ loopBody(now); }catch(err){ onLoopError(err); } });
 
   bus.on('camera.reset', ()=>{ /* modules may react */ });
