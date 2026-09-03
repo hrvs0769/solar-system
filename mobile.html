@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='28' fill='%23ffb454'/%3E%3C/svg%3E" />
+  <title>璀璨太阳系 · 手机版</title>
+</head>
+<body class="mobile">
+  <div id="app"></div>
+  <!-- 模块桌面浮层（手机端隐藏，仅让模块 DOM 正常构建） -->
+  <div id="module-overlay" style="display:none"></div>
+
+  <div id="m-ui">
+    <!-- 顶部小条 -->
+    <div id="m-top">
+      <span class="m-brand">✦ 璀璨太阳系</span>
+      <button class="m-btn" id="m-prop" title="教学比例/完全真实比例">⚖️</button>
+      <button class="m-btn" id="m-label" title="标签开关">标签</button>
+      <button class="m-btn" id="m-bm">🔖</button>
+      <button class="m-btn" id="m-shot">📷</button>
+      <button class="m-btn" id="m-help">?</button>
+      <button class="m-btn" id="m-fs">⛶</button>
+      <button class="m-btn" id="m-about">关于</button>
+    </div>
+
+    <!-- 行星快速选择（横滑，仅全景显示） -->
+    <div id="m-planets" class="hidden"></div>
+    <div class="viewlabel" id="scale-badge" style="position:absolute;top:56px;right:12px;z-index:6;pointer-events:none;font-size:12px">教学比例 · 行星大小放大示意</div>
+    <div class="viewlabel" id="moon-badge" style="position:absolute;top:92px;right:12px;z-index:6;pointer-events:none;font-size:12px;border-left-color:var(--accent2)">今晚月相：—</div>
+
+    <!-- 模块专属控制（按当前模块动态生成） -->
+    <div id="m-module-ctx"></div>
+
+    <!-- 信息底部抽屉 -->
+    <div id="m-info"><button class="m-btn" id="m-info-close">✕</button><div id="m-info-body"></div></div>
+
+    <!-- 时间条 -->
+    <div id="m-time">
+      <button class="m-btn" id="m-play">⏸</button>
+      <button class="m-btn" id="m-now">今</button>
+      <span id="m-date">…</span>
+      <button class="m-btn m-rate" id="m-rate">1秒=1天</button>
+    </div>
+
+    <!-- 底部 Tab 栏 -->
+    <div id="m-tabs">
+      <button data-mod="orbit-view"><span class="ti">🌌</span><span>全景</span></button>
+      <button data-mod="moon-phases"><span class="ti">🌙</span><span>月相</span></button>
+      <button data-mod="tides"><span class="ti">🌊</span><span>潮汐</span></button>
+      <button data-mod="eclipse"><span class="ti">☀️</span><span>日月食</span></button>
+      <button data-mod="seasons"><span class="ti">🍂</span><span>四季</span></button>
+    </div>
+
+    <div id="m-toast"></div>
+    <div id="m-modal"></div>
+  </div>
+
+  <link rel="manifest" href="./manifest.json" />
+  <script>
+    if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    }
+  </script>
+  <script type="module" src="/src/mobile-main.js"></script>
+</body>
+</html>

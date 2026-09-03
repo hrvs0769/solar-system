@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "author": "璀璨太阳系",
+  "textures": [
+    { "file": "2k_sun.jpg", "body": "sun", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_earth_daymap.jpg", "body": "earth", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_earth_clouds.jpg", "body": "earth", "type": "clouds", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_moon.jpg", "body": "moon", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_mercury.jpg", "body": "mercury", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_venus_atmosphere.jpg", "body": "venus", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_mars.jpg", "body": "mars", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_jupiter.jpg", "body": "jupiter", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_saturn.jpg", "body": "saturn", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_saturn_ring_alpha.png", "body": "saturn", "type": "rings", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_uranus.jpg", "body": "uranus", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" },
+    { "file": "2k_neptune.jpg", "body": "neptune", "type": "diffuse", "source": "Solar System Scope textures", "license": "CC BY 4.0", "url": "https://www.solarsystemscope.com/textures", "attribution": "Solar System Scope (CC BY 4.0)" }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "璀璨太阳系 · 手机版",
+  "short_name": "璀璨太阳系",
+  "start_url": "./mobile.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
+  "orientation": "any"
+}

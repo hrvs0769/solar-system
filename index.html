@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='28' fill='%23ffb454'/%3E%3C/svg%3E" />
+  <title>璀璨太阳系 · 3D 太阳系教学系统</title>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="ui">
+    <div id="topbar">
+      <span class="brand">✦ 璀璨太阳系</span>
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-mod="orbit-view">全景</button>
+        <button class="tab" data-mod="moon-phases">月相实验室</button>
+        <button class="tab" data-mod="tides">潮汐</button>
+        <button class="tab" data-mod="eclipse">日月食</button>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="btn-bm" title="教学书签">🔖</button>
+        <button class="icon-btn" id="btn-almanac" title="近期天象">🌌</button>
+        <button class="icon-btn" id="btn-shot" title="保存画面为图片">📷</button>
+        <button class="icon-btn" id="btn-reset" title="复位视角">⌂ 复位</button>
+        <button class="icon-btn" id="btn-help" title="快捷键 (F1)">?</button>
+        <button class="icon-btn" id="btn-quality" title="画质档">画质</button>
+        <button class="icon-btn" id="btn-fullscreen" title="全屏 (F11)">⛶</button>
+        <button class="icon-btn" id="btn-qr" title="手机扫码访问">📱</button>
+        <button class="icon-btn" id="btn-about" title="关于/署名">关于</button>
+      </div>
+    </div>
+    <div class="viewlabel" id="scale-badge" style="position:absolute;top:64px;right:12px;z-index:6;pointer-events:none">教学比例 · 行星大小放大示意（非等比）</div>
+        <div id="view-tools" style="position:absolute;top:128px;right:12px;display:flex;flex-direction:column;gap:6px;z-index:6">
+      <button class="icon-btn" id="vt-prop" title="教学比例/完全真实比例切换">比例</button>
+      <button class="icon-btn" id="vt-moon" title="月地显示三态（放大示意/真实/隐藏）">月地</button>
+      <button class="icon-btn" id="vt-kepler" title="开普勒面积定律演示">面积</button>
+      <button class="icon-btn" id="vt-label" title="标签开关">标签</button>
+    </div>
+<div class="viewlabel" id="moon-badge" style="position:absolute;top:96px;right:12px;z-index:6;pointer-events:none;border-left-color:var(--accent2)">今晚月相：—</div>
+    <div id="planet-menu"></div>
+
+    <div id="bottom">
+      <div id="time-controls">
+        <button class="tc-btn" id="btn-stepback" title="单步 -1 天">◀</button>
+        <button class="tc-btn big" id="btn-play" title="播放/暂停">⏸</button>
+        <button class="tc-btn" id="btn-stepfwd" title="单步 +1 天">▶</button>
+        <button class="tc-btn" id="btn-rate-down" title="降速">−</button>
+        <select id="rate-select"></select>
+        <button class="tc-btn" id="btn-rate-up" title="提速">＋</button>
+        <input type="date" id="date-input" />
+        <button class="tc-btn" id="btn-now" title="回到今天">今</button>
+        <div id="clockDisplay"></div>
+      </div>
+      <div id="zoom-wrap">
+        <button class="tc-btn" id="zoom-out">−</button>
+        <input type="range" id="zoom" min="0" max="100" value="90" />
+        <button class="tc-btn" id="zoom-in">＋</button>
+        <span id="zoom-val">—</span>
+      </div>
+    </div>
+
+    <div id="info-panel"><button class="icon-btn close" id="info-close">✕</button><div id="info-body"></div></div>
+    <div id="toast"></div>
+  </div>
+
+  <!-- 模块专用浮层（月相/潮汐/日月食 动态挂载到此处） -->
+  <div id="module-overlay"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+// 行星中文科普资料（NASA/JPL 数值 + AI 起草文案）。⚠️ 全部待老师审校后才能用于课堂。
+// reviewStatus: 'pending' | 'approved'；approved 时填写 reviewer & reviewedAt。
+export const FACTS = {
+  sun: {
+    zh:'太阳', en:'Sun', emoji:'☀️', type:'恒星',
+    distanceAU:0, distanceKm:0,
+    periodDays:'—', rotationDays:25.38, diameterKm:1392700, tempC:5500, moons:0, obliquityDeg:7.25,
+    elements:{a_au:'—',e:'—',i_deg:'—',period_days:'—'},
+    description:'太阳是太阳系唯一的恒星，占太阳系总质量的 99.8%。表面温度约 5500℃，核心通过核聚变将氢转化为氦，释放光和热。它所发出的光到达地球约需 8 分 20 秒。',
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+  mercury: {
+    zh:'水星', en:'Mercury', emoji:'🟤', type:'类地行星',
+    distanceAU:0.387, distanceKm:57910000, periodDays:88, rotationDays:58.65, diameterKm:4879, tempC:167, moons:0, obliquityDeg:0.03,
+    elements:{a_au:0.387,e:0.2056,i_deg:7.0,period_days:88},
+    description:'离太阳最近、最小的行星。公转一周仅 88 天，昼夜温差极大（白天约 430℃，夜里约 -180℃）。表面布满环形山，与月球相似。',
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+  venus: {
+    zh:'金星', en:'Venus', emoji:'🟡', type:'类地行星',
+    distanceAU:0.723, distanceKm:108200000, periodDays:224.7, rotationDays:-243.02, diameterKm:12104, tempC:464, moons:0, obliquityDeg:177.4,
+    elements:{a_au:0.723,e:0.0068,i_deg:3.39,period_days:224.7},
+    description:'最亮的行星，常被误称为“启明星”或“长庚星”。被厚厚的大气层包裹，温室效应使其表面温度高达约 464℃，是太阳系最热的行星。自转方向与其他行星相反（逆向自转）。',
+    faq:[{q:'为什么金星比水星离太阳远，反而更热？',a:'金星有浓密的二氧化碳大气，温室效应极强，把热量“困”住了；而水星几乎没有大气，留不住热量。'}],
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+  earth: {
+    zh:'地球', en:'Earth', emoji:'🌍', type:'类地行星',
+    distanceAU:1.0, distanceKm:149600000, periodDays:365.25, rotationDays:0.9973, diameterKm:12756, tempC:15, moons:1, obliquityDeg:23.44,
+    elements:{a_au:1.0,e:0.0167,i_deg:0.0,period_days:365.25},
+    description:'目前已知唯一存在生命的行星。表面约 71% 被液态水覆盖，拥有大气层与磁场保护。自转轴倾斜 23.4°，由此产生四季更替。',
+    faq:[{q:'背向月球的那一侧，为什么也会涨潮？',a:'引潮力是“引力差”：离月球近的一侧被拉得多、远的一侧被拉得少，于是海水沿地月线两侧都隆起。'}],
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+  mars: {
+    zh:'火星', en:'Mars', emoji:'🔴', type:'类地行星',
+    distanceAU:1.524, distanceKm:227900000, periodDays:687, rotationDays:1.026, diameterKm:6792, tempC:-65, moons:2, obliquityDeg:25.19,
+    elements:{a_au:1.524,e:0.0934,i_deg:1.85,period_days:687},
+    description:'因表面富含氧化铁而呈现红色，被称为“红色星球”。拥有太阳系最大的火山——奥林帕斯山（高约 21 km）。目前有多枚探测器在其表面和轨道上工作。',
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+  jupiter: {
+    zh:'木星', en:'Jupiter', emoji:'🟠', type:'气态巨行星',
+    distanceAU:5.203, distanceKm:778500000, periodDays:4333, rotationDays:0.4135, diameterKm:142984, tempC:-108, moons:95, obliquityDeg:3.13,
+    elements:{a_au:5.203,e:0.0484,i_deg:1.30,period_days:4332.6},
+    description:'太阳系体积和质量最大的行星，主要由氢和氦组成。著名的“大红斑”是一个持续数百年的巨大风暴。自转极快，一天仅约 10 小时。',
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+  saturn: {
+    zh:'土星', en:'Saturn', emoji:'🪐', type:'气态巨行星',
+    distanceAU:9.537, distanceKm:1434000000, periodDays:10759, rotationDays:0.444, diameterKm:120536, tempC:-139, moons:146, obliquityDeg:26.73,
+    elements:{a_au:9.537,e:0.0542,i_deg:2.49,period_days:10747},
+    description:'以壮丽的光环闻名，光环由无数冰粒和岩石碎块组成，宽度可达数十万公里，但厚度仅约几十米。密度小于水，若有足够大的海洋，土星可以漂浮其上。',
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+  uranus: {
+    zh:'天王星', en:'Uranus', emoji:'🔵', type:'冰巨星',
+    distanceAU:19.19, distanceKm:2871000000, periodDays:30688, rotationDays:-0.718, diameterKm:51118, tempC:-197, moons:28, obliquityDeg:97.77,
+    elements:{a_au:19.19,e:0.0472,i_deg:0.77,period_days:30589},
+    description:'自转轴几乎“躺着”绕太阳公转（倾角约 98°），因而有独特的季节变化。大气含甲烷，使其呈现淡蓝色。',
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+  neptune: {
+    zh:'海王星', en:'Neptune', emoji:'🔷', type:'冰巨星',
+    distanceAU:30.07, distanceKm:4495000000, periodDays:60182, rotationDays:0.671, diameterKm:49528, tempC:-201, moons:16, obliquityDeg:28.32,
+    elements:{a_au:30.07,e:0.0086,i_deg:1.77,period_days:59800},
+    description:'离太阳最远的行星，也是风力最猛烈的行星（风速可达约 2000 km/h）。呈现深蓝色，与天王星一样富含甲烷。一个公转周期约 165 年。',
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+  moon: {
+    zh:'月球', en:'Moon', emoji:'🌙', type:'天然卫星（地球）',
+    distanceAU:0.00257, distanceKm:384400, periodDays:27.32, rotationDays:27.32, diameterKm:3474, tempC:-20, moons:0, obliquityDeg:6.68,
+    elements:{a_au:0.00257,e:0.0549,i_deg:5.14,period_days:27.32},
+    description:'地球唯一的天然卫星。由于自转周期与公转周期相等，永远以同一面朝向地球。月相变化与日月食都与其绕地球的公转密切相关。',
+    faq:[{q:'月球为什么总是同一面朝向地球？',a:'潮汐锁定：月球自转一圈与绕地球公转一圈的时间相同（约27.3天），所以始终只有一面朝向地球。'}],
+    reviewStatus:'pending', reviewer:'', reviewedAt:'',
+  },
+};

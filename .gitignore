@@ -1,0 +1,17 @@
+# 依赖
+node_modules/
+
+# 构建产物（可随时 npm run build:web / build:offline 重建）
+dist/
+dist-offline/
+
+# 临时目录（截图自检 / 二维码生成的残留）
+tmp-pup/
+tmp-qr/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

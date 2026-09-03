@@ -1,0 +1,100 @@
+:root{
+  --bg:#0a0e1a; --panel:rgba(12,18,36,.84); --panel-solid:#0c1224;
+  --text:#e8ecf5; --muted:#9aa7bd; --accent:#ffb454; --accent2:#5aa0ff;
+  --ok:#57d38a; --warn:#ffb454; --err:#ff6b6b;
+  --radius:10px; --ui-s:1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:16px;user-select:none}
+#app{position:fixed;inset:0}
+#app canvas{display:block;width:100%;height:100%}
+
+/* ---- UI 顶层 ---- */
+#ui{position:fixed;inset:0;pointer-events:none;font-size:calc(16px*var(--ui-s))}
+#ui>*{pointer-events:auto}
+.hidden-ui #ui{display:none}
+
+/* 顶栏（flex-wrap 允许在窄窗整行换行而非折断文字/溢出裁切） */
+#topbar{position:absolute;top:0;left:0;right:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(180deg,rgba(8,12,24,.9),rgba(8,12,24,0));pointer-events:none}
+#topbar .brand{font-weight:700;font-size:calc(18px*var(--ui-s));color:var(--accent);margin-right:8px;pointer-events:none;white-space:nowrap}
+.tabs{display:flex;gap:6px;pointer-events:auto;flex-wrap:wrap}
+.tab{padding:8px 16px;border-radius:var(--radius);background:var(--panel);border:1px solid rgba(255,255,255,.08);color:var(--muted);cursor:pointer;font-size:calc(15px*var(--ui-s));white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--accent);color:#1a1208;border-color:var(--accent)}
+/* 右侧按钮组：整体右对齐；窄屏时整组换行（仍是右对齐），不会散落到左列 */
+.top-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-left:auto;pointer-events:auto;padding-left:8px}
+.icon-btn{min-width:40px;min-height:40px;padding:0 10px;border-radius:var(--radius);background:var(--panel);border:1px solid rgba(255,255,255,.08);color:var(--text);cursor:pointer;font-size:calc(15px*var(--ui-s));pointer-events:auto;white-space:nowrap}
+.icon-btn:hover{background:rgba(255,255,255,.1)}
+.icon-btn.off{opacity:.5;border-color:rgba(255,255,255,.05);color:var(--muted)}
+
+/* 左下行星菜单 */
+#planet-menu{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:6px;background:var(--panel);padding:10px;border-radius:var(--radius);border:1px solid rgba(255,255,255,.08)}
+.pm-item{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:8px;cursor:pointer;min-height:40px;color:var(--text);font-size:calc(14px*var(--ui-s))}
+.pm-item:hover{background:rgba(255,255,255,.08)}
+.pm-item .dot{width:12px;height:12px;border-radius:50%}
+.pm-item .key{margin-left:auto;color:var(--muted);font-size:calc(12px*var(--ui-s))}
+
+/* 底栏 */
+#bottom{position:absolute;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(0deg,rgba(8,12,24,.92),rgba(8,12,24,0))}
+#time-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tc-btn{min-width:44px;min-height:44px;border-radius:var(--radius);background:var(--panel);border:1px solid rgba(255,255,255,.08);color:var(--text);cursor:pointer;font-size:calc(15px*var(--ui-s))}
+.tc-btn:hover{background:rgba(255,255,255,.1)}
+.tc-btn.big{font-size:calc(18px*var(--ui-s));min-width:56px}
+select,input[type=date],input[type=text]{background:var(--panel-solid);color:var(--text);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius);padding:8px 10px;font-size:calc(15px*var(--ui-s));min-height:44px}
+#clockDisplay{font-size:calc(20px*var(--ui-s));font-weight:600;min-width:190px;text-align:center;background:var(--panel);padding:6px 12px;border-radius:var(--radius)}
+#rate-select{width:auto}
+
+/* 缩放 */
+#zoom-wrap{display:flex;align-items:center;gap:8px;margin-left:auto}
+#zoom{width:200px;accent-color:var(--accent);height:6px;min-height:6px}
+#zoom-val{min-width:70px;color:var(--muted);font-size:calc(13px*var(--ui-s))}
+
+/* 右侧信息面板（打开时让出右列：隐藏右上角标与视图工具，避免叠盖） */
+#info-panel{position:absolute;right:12px;top:64px;width:320px;max-height:calc(100% - 130px);overflow:auto;background:var(--panel);padding:16px;border-radius:var(--radius);border:1px solid rgba(255,255,255,.1);display:none}
+#info-panel.open{display:block}
+body.info-open #scale-badge, body.info-open #moon-badge, body.info-open #view-tools{display:none}
+#info-panel h2{font-size:calc(20px*var(--ui-s));margin-bottom:4px;color:var(--accent)}
+#info-panel .sub{color:var(--muted);font-size:calc(13px*var(--ui-s));margin-bottom:10px}
+#info-panel table{width:100%;border-collapse:collapse;font-size:calc(14px*var(--ui-s))}
+#info-panel td{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
+#info-panel td:first-child{color:var(--muted);width:88px}
+#info-panel p.desc{margin-top:10px;line-height:1.6;font-size:calc(14px*var(--ui-s))}
+#info-panel .review{color:var(--warn);font-size:calc(12px*var(--ui-s));margin-top:8px}
+#info-panel .close{position:absolute;top:8px;right:8px}
+
+/* 帮助 / 关于浮层 */
+.modal{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;pointer-events:auto}
+.modal .card{background:var(--panel-solid);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);max-width:640px;width:90%;max-height:80%;overflow:auto;padding:24px}
+.modal h2{color:var(--accent);margin-bottom:12px}
+.modal table{width:100%;font-size:calc(14px*var(--ui-s));border-collapse:collapse}
+.modal td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
+.modal td:first-child{color:var(--muted);width:120px}
+kbd{background:#222c44;border-radius:4px;padding:2px 7px;font-size:calc(12px*var(--ui-s));border:1px solid rgba(255,255,255,.15)}
+.modal .close-btn{margin-top:16px;padding:10px 20px;border-radius:var(--radius);background:var(--accent);color:#1a1208;border:none;cursor:pointer}
+
+/* 标签（CSS2D） */
+.body-label{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;background:rgba(10,14,26,.65);border-left:3px solid var(--accent);border-radius:4px;color:#fff;font-size:13px;white-space:nowrap;transform:translateY(-8px)}
+.body-label .lz{font-weight:600}
+.body-label .le{color:var(--muted);font-size:11px}
+
+/* toast */
+#toast{position:absolute;top:24px;right:50%;transform:translateX(50%);display:flex;flex-direction:column;gap:8px;z-index:50;pointer-events:none}
+.toast{padding:10px 18px;border-radius:var(--radius);background:var(--panel);border-left:4px solid var(--accent2);font-size:calc(14px*var(--ui-s));box-shadow:0 4px 20px rgba(0,0,0,.4);animation:tin .25s}
+.toast.warn{border-color:var(--warn)} .toast.err{border-color:var(--err)} .toast.ok{border-color:var(--ok)}
+@keyframes tin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+
+/* 月相实验室 / 潮汐 模块内角标 */
+.viewlabel{position:absolute;padding:6px 12px;background:var(--panel);border-radius:var(--radius);color:var(--muted);font-size:calc(13px*var(--ui-s));border:1px solid rgba(255,255,255,.08)}
+.module-ctx{position:absolute;inset:0;display:none;pointer-events:none}
+.module-ctx.open{display:block}
+/* 模块内交互控件可点击（容器保持穿透，不挡住顶栏与画布） */
+.module-ctx button,.module-ctx .evt,.module-ctx .evt-list,.module-ctx input,.module-ctx select,.module-ctx a{pointer-events:auto}
+.module-ctx .top-left{top:60px;left:14px} .module-ctx .top-right{top:60px;right:14px}
+
+/* 事件列表（日月食） */
+.evt-list{position:absolute;right:12px;top:64px;width:300px;max-height:calc(100% - 130px);overflow:auto;background:var(--panel);padding:12px;border-radius:var(--radius);display:none}
+.evt-list.open{display:block}
+.evt{cursor:pointer;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);margin-bottom:6px;font-size:calc(14px*var(--ui-s))}
+.evt:hover{background:rgba(255,255,255,.08)} .evt.active{border-color:var(--accent)}
+.evt .kind{color:var(--accent)}

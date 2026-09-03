@@ -1,0 +1,81 @@
+/* 手机端样式：竖屏友好、大触控目标、高对比 */
+:root{
+  --bg:#0a0e1a; --panel:rgba(12,18,36,.9); --text:#e8ecf5; --muted:#9aa7bd; --accent:#ffb454;
+  --ok:#57d38a; --warn:#ffb454; --err:#ff6b6b; --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;user-select:none;-webkit-user-select:none}
+body.mobile #app{position:fixed;inset:0}
+body.mobile #app canvas{display:block;width:100%;height:100%;touch-action:none}
+
+#m-ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;font-size:16px}
+#m-ui button{pointer-events:auto}
+.hidden{display:none!important}
+
+/* 顶部 */
+/* 顶部：品牌名不换行，按钮紧凑；窄屏优先全部显示，过宽时横向滚动兜底 */
+#m-top{display:flex;align-items:center;flex-wrap:nowrap;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:10px 12px;padding-bottom:44px;padding-top:calc(10px + env(safe-area-inset-top));background:linear-gradient(180deg,rgba(8,12,24,.9),rgba(8,12,24,0));pointer-events:none}
+#m-top::-webkit-scrollbar{display:none}
+#m-top .m-brand{font-weight:700;font-size:13px;color:var(--accent);margin-right:auto;pointer-events:none;white-space:nowrap;flex-shrink:0}
+#m-top .m-btn{flex:0 0 auto;min-width:0;min-height:40px;height:40px;padding:0 8px;white-space:nowrap;font-size:14px}
+/* 右上角标：单行处理，防止换行后相互叠盖 */
+#scale-badge,#moon-badge{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100vw - 24px);font-size:11px}
+
+/* 通用按钮 */
+.m-btn{min-width:44px;min-height:44px;padding:0 14px;border-radius:12px;background:var(--panel);border:1px solid rgba(255,255,255,.1);color:var(--text);font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.m-btn:active{background:rgba(255,255,255,.16)}
+.m-btn.off{opacity:.45}
+
+/* 行星横滑条 */
+#m-planets{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;scrollbar-width:none;pointer-events:auto}
+#m-planets::-webkit-scrollbar{display:none}
+#m-planets .chip{flex:0 0 auto;min-height:42px;padding:0 14px;display:inline-flex;align-items:center;gap:6px;font-size:15px;border-radius:20px;background:var(--panel);border:1px solid rgba(255,255,255,.1)}
+#m-planets .chip .dot{width:10px;height:10px;border-radius:50%}
+#m-planets .chip.active{border-color:var(--accent)}
+
+/* 模块控制行 */
+#m-module-ctx{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;pointer-events:auto;z-index:5}
+#m-module-ctx .row{display:flex;gap:8px;flex-wrap:wrap;width:100%}
+#m-module-ctx .evt-list{display:flex;flex-direction:column;gap:6px;width:100%;max-height:40vh;overflow:auto;background:var(--panel);border-radius:12px;padding:10px}
+#m-module-ctx .evt{pointer-events:auto;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);font-size:15px}
+#m-module-ctx .evt.active{border-color:var(--accent)}
+#m-module-ctx .evt .kind{color:var(--accent)}
+
+/* 时间条 */
+#m-time{display:flex;align-items:center;gap:8px;padding:10px 12px;margin-top:auto;margin-bottom:0;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:linear-gradient(0deg,rgba(8,12,24,.92),rgba(8,12,24,0));pointer-events:auto}
+#m-date{font-size:17px;font-weight:600;min-width:130px;text-align:center}
+.m-rate{font-size:15px;min-width:auto;padding:0 12px}
+
+/* 底部 Tab 栏 */
+#m-tabs{display:flex;pointer-events:auto;background:var(--panel);border-top:1px solid rgba(255,255,255,.08);padding-bottom:env(safe-area-inset-bottom)}
+#m-tabs button{flex:1;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer}
+#m-tabs button .ti{font-size:20px}
+#m-tabs button.active{color:var(--accent)}
+
+/* 信息抽屉 */
+#m-info{position:absolute;left:0;right:0;bottom:0;max-height:72vh;overflow:auto;background:var(--panel);border-radius:18px 18px 0 0;padding:16px;transform:translateY(120%);transition:transform .25s;z-index:20;pointer-events:auto}
+#m-info.open{transform:translateY(0)}
+#m-info h2{font-size:20px;color:var(--accent);margin-bottom:4px}
+#m-info .sub{color:var(--muted);font-size:13px;margin-bottom:8px}
+#m-info table{width:100%;font-size:15px;border-collapse:collapse}
+#m-info td{padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:top}
+#m-info td:first-child{color:var(--muted);width:88px}
+#m-info p.desc{margin-top:10px;line-height:1.6;font-size:15px}
+#m-info .review{color:var(--warn);font-size:13px;margin-top:8px}
+#m-info-close{position:absolute;top:10px;right:12px}
+
+/* 模态 */
+#m-modal{position:absolute;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:30;pointer-events:auto}
+#m-modal.open{display:flex}
+#m-modal .card{background:#0c1224;border:1px solid rgba(255,255,255,.15);border-radius:16px;max-width:92%;max-height:80%;overflow:auto;padding:24px}
+#m-modal h2{color:var(--accent);margin-bottom:12px}
+#m-modal table{width:100%;font-size:14px;border-collapse:collapse}
+#m-modal td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
+#m-modal td:first-child{color:var(--muted);width:96px}
+kbd{background:#222c44;border-radius:4px;padding:2px 6px;font-size:12px}
+#m-modal .close{margin-top:16px;padding:12px 22px;border-radius:12px;background:var(--accent);color:#1a1208;border:none;font-size:16px}
+
+/* toast */
+#m-toast{position:absolute;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:40;pointer-events:none;width:88%}
+.toast{padding:12px 16px;border-radius:12px;background:var(--panel);border-left:4px solid var(--ok);font-size:15px}
+.toast.warn{border-color:var(--warn)} .toast.err{border-color:var(--err)}
