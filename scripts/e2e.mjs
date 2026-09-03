@@ -73,8 +73,8 @@ check('月相「返回全景」→ orbit-view', (await ev(()=>window.__SS.curren
 
 console.log('\n===== 3.5 潮汐 / 日月食 模块按钮 =====');
 await click('#tabs .tab[data-mod="tides"]'); await sleep(400);
-const tideChart = await ev(()=>!!document.getElementById('tide-chart'));
-check('潮汐模块有水位曲线画布', tideChart);
+const tideChart = await ev(()=>!!document.getElementById('tide-schematic'));
+check('潮汐模块有示意图画布', tideChart);
 await click('#tide-spring'); await click('#tide-neap'); await sleep(150);
 check('点「朔望大潮/上下弦小潮」无异常', pageErrors.length===0, pageErrors.join('; '));
 await click('#tide-back'); await sleep(300);
