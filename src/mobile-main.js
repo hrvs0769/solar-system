@@ -15,6 +15,7 @@ import { MoonPhases } from './modules/moon-phases.js';
 import { Tides } from './modules/tides.js';
 import { Eclipse } from './modules/eclipse.js';
 import { Seasons } from './modules/seasons.js';
+import { Satellite } from './modules/satellite.js';
 import { fmtJdLocal, jdToDate, dateToJd } from './sim/timeutil.js';
 import { FACTS } from './data/planet-facts.js';
 import { listBookmarks, saveCurrentBookmark, applyBookmark } from './ui/bookmarks.js';
@@ -65,8 +66,9 @@ async function boot(){
   const tides = new Tides(ctx);
   const eclipse = new Eclipse(ctx);
   const seasons = new Seasons(ctx);
-  const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'tides':tides, 'eclipse':eclipse, 'seasons':seasons };
-  ctx.mod = { moonPhases, tides, eclipse, seasons };
+  const satellite = new Satellite(ctx);
+  const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'tides':tides, 'eclipse':eclipse, 'seasons':seasons, 'satellite':satellite };
+  ctx.mod = { moonPhases, tides, eclipse, seasons, satellite };
   let current = orbitView, currentId='orbit-view';
   cameraRig.bodyPosFn = id => orbitView.getPos(id) || {x:0,y:0,z:0};
   ctx.orbitView = orbitView;
@@ -178,6 +180,7 @@ function buildCtx(ctx){
     else if(moduleId==='tides') tidesCtx(box, mod.tides);
     else if(moduleId==='eclipse') eclipseCtx(box, mod.eclipse, ctx.clock);
     else if(moduleId==='seasons') seasonsCtx(box, mod.seasons, ctx.clock);
+    else if(moduleId==='satellite') satelliteCtx(box, mod.satellite);
   });
 }
 function helpRow(){ return `<button class="m-btn" data-act="module:back">返回全景</button>`; }
@@ -252,6 +255,16 @@ function seasonsCtx(box, se, clock){
     clock.jump((Date.UTC(y,m-1,d,12))/86400000+2440587.5);
     bus.emit('toast',{text:`已跳到${b.textContent}（${y}年）`,level:'info'});
   }));
+  wireModuleBack(box);
+}
+
+function satelliteCtx(box, sat){
+  box.innerHTML = `<div class="row">
+      <button class="m-btn" id="sat-d">🔍 看卫星细节</button>
+      <button class="m-btn" id="sat-o">🌍 看全貌</button>
+      ${helpRow()}</div>`;
+  box.querySelector('#sat-d')?.addEventListener('click',()=>sat?.setMode('detail'));
+  box.querySelector('#sat-o')?.addEventListener('click',()=>sat?.setMode('overview'));
   wireModuleBack(box);
 }
 

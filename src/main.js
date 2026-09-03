@@ -15,6 +15,7 @@ import { MoonPhases } from './modules/moon-phases.js';
 import { Tides } from './modules/tides.js';
 import { Eclipse } from './modules/eclipse.js';
 import { Seasons } from './modules/seasons.js';
+import { Satellite } from './modules/satellite.js';
 import { initTopbar } from './ui/topbar.js';
 import { initTimeControls } from './ui/time-controls.js';
 import { initZoomSlider } from './ui/zoom-slider.js';
@@ -83,7 +84,8 @@ async function boot(){
   const tides = new Tides(ctx);
   const eclipse = new Eclipse(ctx);
   const seasons = new Seasons(ctx);
-  const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'tides':tides, 'eclipse':eclipse, 'seasons':seasons };
+  const satellite = new Satellite(ctx);
+  const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'tides':tides, 'eclipse':eclipse, 'seasons':seasons, 'satellite':satellite };
   let current = modules['orbit-view'];
   let currentId = 'orbit-view';
 
@@ -212,7 +214,7 @@ async function boot(){
   setTimeout(()=>maybeShowGuide(), 1200);   // 首次打开引导
 
   /* 调试暴露（供截图自检读取渲染/场景状态） */
-  window.__SS = { renderer, get scene(){ return system.scene; }, get camera(){ return camera; }, get starfield(){ return system.starfield; }, cameraRig, clock, quality, bus, get orbitView(){ return orbitView; }, moonPhases, tides, eclipse, seasons, get currentId(){ return currentId; } };
+  window.__SS = { renderer, get scene(){ return system.scene; }, get camera(){ return camera; }, get starfield(){ return system.starfield; }, cameraRig, clock, quality, bus, get orbitView(){ return orbitView; }, moonPhases, tides, eclipse, seasons, satellite, get currentId(){ return currentId; } };
 }
 
 boot().catch(err=>{

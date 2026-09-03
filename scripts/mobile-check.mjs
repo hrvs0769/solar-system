@@ -29,10 +29,10 @@ const check=(n,c,i='')=>console.log((c?'  ok  ':'  FAIL')+' '+n+(i?'  ['+i+']':'
 
 const boot=await page.evaluate(()=>({ has:!!window.__SS, id:window.__SS?.currentId, tabs:document.querySelectorAll('#m-tabs button').length }));
 check('手机版启动(__SS)', boot.has, JSON.stringify(boot));
-check('底部有5个Tab(含四季)', boot.tabs===5, boot.tabs);
+check('底部有6个Tab(含四季/卫星)', boot.tabs===6, boot.tabs);
 
 // 点 Tab 切模块
-for(const [id,sel] of [['moon-phases','月相'],['tides','潮汐'],['eclipse','日月食'],['seasons','四季'],['orbit-view','全景']]){
+for(const [id,sel] of [['moon-phases','月相'],['tides','潮汐'],['eclipse','日月食'],['seasons','四季'],['satellite','卫星'],['orbit-view','全景']]){
   await page.evaluate(m=>{ const b=document.querySelector(`#m-tabs button[data-mod="${m}"]`); b&&b.click(); }, id); await sleep(600);
   const cur=await page.evaluate(()=>window.__SS?.currentId);
   check(`切到「${sel}」`, cur===id, cur);

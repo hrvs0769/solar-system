@@ -8,6 +8,7 @@ const MODULES = [
   { id:'tides', label:'潮汐' },
   { id:'eclipse', label:'日月食' },
   { id:'seasons', label:'四季' },
+  { id:'satellite', label:'卫星' },
 ];
 
 export function initTopbar(ctx){

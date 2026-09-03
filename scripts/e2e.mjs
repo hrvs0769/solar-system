@@ -45,7 +45,7 @@ check('场景有绘制(drawCalls>0)', boot.drawCalls>0, boot.drawCalls);
 check('无页面 JS 报错', pageErrors.length===0, pageErrors.join('; '));
 
 console.log('\n===== 2. 模块切换(顶栏) =====');
-for(const [id,sel] of [['moon-phases','月相实验室'],['tides','潮汐'],['eclipse','日月食'],['orbit-view','全景']]){
+for(const [id,sel] of [['moon-phases','月相实验室'],['tides','潮汐'],['eclipse','日月食'],['satellite','卫星'],['orbit-view','全景']]){
   await click(`#tabs .tab[data-mod="${id}"]`);
   const cur = await ev(()=>window.__SS.currentId);
   check(`切换到「${sel}」`, cur===id, cur);
