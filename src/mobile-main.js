@@ -175,7 +175,7 @@ function wireModuleBack(root){
   root.querySelectorAll('[data-act="module:back"]').forEach(b=>b.addEventListener('click',()=>bus.emit('module.switch',{moduleId:'orbit-view'})));
 }
 function moonCtx(box, mp, clock){
-  box.innerHTML = `<div class="row" id="m-phase" style="color:var(--accent);font-size:15px;font-weight:600">相位：—</div>
+  box.innerHTML = `<div class="row"><div class="m-title" id="m-phase">相位：—</div></div>
       <div class="row">
       <button class="m-btn" data-preset="0">朔</button><button class="m-btn" data-preset="90">上弦</button>
       <button class="m-btn" data-preset="180">望</button><button class="m-btn" data-preset="270">下弦</button>
@@ -225,8 +225,8 @@ function tidesCtx(box, td){
 }
 function eclipseCtx(box, ec){
   const evs = (ec && ec.events) || [];
-  box.innerHTML = `<div class="evt-list">${evs.map((ev,i)=>`<div class="evt" data-i="${i}"><div class="kind">${ev.type==='solar'?'☀️':'🌕'} ${(ev.kind==='annular'?'日环食':ev.kind==='total'?(ev.type==='solar'?'日全食':'月全食'):ev.kind==='partial'?'偏食':'半影月食')}</div><div>${ev.date.toLocaleDateString('zh-CN')}</div></div>`).join('')}
-      <div style="margin-top:8px;text-align:center">${helpRow()}</div></div>`;
+  box.innerHTML = `<div class="evt-list" style="max-height:26vh"><div class="m-title" style="padding:0 2px 6px">近期日月食（点某条跳到该次）</div>${evs.map((ev,i)=>`<div class="evt" data-i="${i}"><div class="kind">${ev.type==='solar'?'☀️':'🌕'} ${(ev.kind==='annular'?'日环食':ev.kind==='total'?(ev.type==='solar'?'日全食':'月全食'):ev.kind==='partial'?'偏食':'半影月食')}</div><div>${ev.date.toLocaleDateString('zh-CN')}</div></div>`).join('')}
+      <div style="margin-top:6px">${helpRow()}</div></div>`;
   box.querySelectorAll('.evt').forEach(el=>el.addEventListener('click',()=>ec?.selectEvent(+el.getAttribute('data-i'))));
   wireModuleBack(box);
 }

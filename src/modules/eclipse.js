@@ -98,6 +98,7 @@ export class Eclipse extends ModuleBase {
 
   _drawSchematic(sdir, mdir, solar){
     if(!this.sctx) return;
+    if(typeof document!=='undefined' && document.body && document.body.classList.contains('mobile')) return; // 手机端不画桌面示意图
     const cv=this.sc, w=cv.width, h=cv.height, g=this.sctx;
     g.clearRect(0,0,w,h); g.fillStyle='#0a0f1c'; g.fillRect(0,0,w,h); g.fillStyle='#10182c'; g.fillRect(20,20,w-40,h-40);
     const cx=w*0.45, cy=h*0.6, R=Math.min(w,h)*0.10;
@@ -140,6 +141,19 @@ export class Eclipse extends ModuleBase {
   render(){
     const r=this.ctx.renderer, w=r.domElement.clientWidth, h=r.domElement.clientHeight;
     const portrait = h > w*1.05;
+    const isMobile = typeof document!=='undefined' && document.body && document.body.classList.contains('mobile');
+    if(isMobile){
+      this.cam.aspect=w/h; this.cam.updateProjectionMatrix();
+      const sdir=this._sdir||new THREE.Vector3(1,0,0);
+      const up=new THREE.Vector3(0,1,0), right=sdir.clone(); right.y=0; if(right.lengthSq()<1e-6) right.set(1,0,0); right.normalize();
+      const fwd=new THREE.Vector3().crossVectors(right,up).normalize();
+      const lookDir=new THREE.Vector3().addScaledVector(right,-0.05).addScaledVector(fwd,-1).addScaledVector(up,0.34).normalize();
+      const vHalf=(this.cam.fov*Math.PI)/360, hHalf=Math.atan(Math.tan(vHalf)*Math.max(w/h,0.2));
+      const dist=Math.max(0.9, (SUN_DIST+R_MOON_ORBIT)*1.15/Math.tan(hHalf), (SUN_DIST+R_MOON_ORBIT)*1.15/Math.tan(vHalf));
+      this.cam.position.copy(lookDir.multiplyScalar(dist)); this.cam.lookAt(0,0,0);
+      r.setViewport(0,0,w,h); r.setScissorTest(false); r.autoClear=true; r.render(this.scene,this.cam);
+      return;
+    }
     if(this.sc && this.sctx){ const newW=portrait?w:Math.floor(w*0.5), newH=portrait?Math.floor(h*0.5):h;
       this.sc.style.position='absolute'; this.sc.style.left='0'; this.sc.style.top='0'; this.sc.style.width=newW+'px'; this.sc.style.height=newH+'px';
       if(this.sc.width!==newW||this.sc.height!==newH){ this.sc.width=newW; this.sc.height=newH; } }

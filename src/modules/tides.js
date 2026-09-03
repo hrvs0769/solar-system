@@ -142,6 +142,7 @@ export class Tides extends ModuleBase {
 
   _drawSchematic(mdir, sdir, obsDir, norm){
     if(!this.sctx) return;
+    if(typeof document!=='undefined' && document.body && document.body.classList.contains('mobile')) return; // 手机端不画桌面示意图
     const cv=this.sc, w=cv.width, h=cv.height, g=this.sctx;
     g.clearRect(0,0,w,h);
     // 深色背景
@@ -207,6 +208,19 @@ export class Tides extends ModuleBase {
   render(){
     const r=this.ctx.renderer, w=r.domElement.clientWidth, h=r.domElement.clientHeight;
     const portrait = h > w*1.05;
+    const isMobile = typeof document!=='undefined' && document.body && document.body.classList.contains('mobile');
+    // 手机端：全屏 3D 场景（示意图分屏仅用于桌面端，避免手机上被隐藏容器挡住、只有半屏）
+    if(isMobile){
+      this.cam.aspect=w/h; this.cam.updateProjectionMatrix();
+      const dir=new THREE.Vector3(0.44,0.34,0.44).normalize();
+      const baseDist=new THREE.Vector3(0.44,0.34,0.44).length();
+      const vHalf=(this.cam.fov*Math.PI)/360, hHalf=Math.atan(Math.tan(vHalf)*Math.max(w/h,0.2));
+      const fit=(R_ORBIT+R_MOON+R_EARTH)*1.25;
+      const dist=Math.max(baseDist, fit/Math.tan(hHalf), fit/Math.tan(vHalf));
+      this.cam.position.copy(dir.multiplyScalar(dist)); this.cam.lookAt(0,0,0);
+      r.setViewport(0,0,w,h); r.setScissorTest(false); r.autoClear=true; r.render(this.scene,this.cam);
+      return;
+    }
     // 示意图 canvas（2D 截面）：横屏占左半、竖屏占上半（DOM，叠在 WebGL 画布之上）
     if(this.sc && this.sctx){
       const newW = portrait ? w : Math.floor(w*0.5);

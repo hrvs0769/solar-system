@@ -27,10 +27,13 @@
 
     <!-- 行星快速选择（横滑，仅全景显示） -->
     <div id="m-planets" class="hidden"></div>
-    <div class="viewlabel" id="scale-badge" style="position:absolute;top:56px;right:12px;z-index:6;pointer-events:none;font-size:12px">教学比例 · 行星大小放大示意</div>
-    <div class="viewlabel" id="moon-badge" style="position:absolute;top:92px;right:12px;z-index:6;pointer-events:none;font-size:12px;border-left-color:var(--accent2)">今晚月相：—</div>
+    <div class="viewlabel" id="scale-badge" style="position:absolute;top:50px;left:12px;right:auto;z-index:6;pointer-events:none;font-size:11px">教学比例 · 行星大小放大示意</div>
+    <div class="viewlabel" id="moon-badge" style="position:absolute;top:50px;right:8px;z-index:6;pointer-events:none;font-size:11px;border-left-color:var(--accent2)">今晚月相：—</div>
 
-    <!-- 模块专属控制（按当前模块动态生成） -->
+    <!-- 中场弹性空间：让 3D 场景成为主角 -->
+    <div id="m-mid-space"></div>
+
+    <!-- 模块专属控制（按当前模块动态生成，置于底部，避免盖住场景） -->
     <div id="m-module-ctx"></div>
 
     <!-- 信息底部抽屉 -->

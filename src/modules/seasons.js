@@ -114,6 +114,7 @@ export class Seasons extends ModuleBase {
 
   _drawSchematic(ax, dir, toward){
     if(!this.sctx) return;
+    if(typeof document!=='undefined' && document.body && document.body.classList.contains('mobile')) return; // 手机端不画桌面示意图
     const cv=this.sc, w=cv.width, h=cv.height, g=this.sctx;
     g.clearRect(0,0,w,h); g.fillStyle='#0a0f1c'; g.fillRect(0,0,w,h); g.fillStyle='#10182c'; g.fillRect(20,20,w-40,h-40);
     const cx=w*0.5, cy=h*0.5, R=Math.min(w,h)*0.24;
@@ -149,6 +150,18 @@ export class Seasons extends ModuleBase {
   render(){
     const r=this.ctx.renderer, w=r.domElement.clientWidth, h=r.domElement.clientHeight;
     const portrait = h > w*1.05;
+    const isMobile = typeof document!=='undefined' && document.body && document.body.classList.contains('mobile');
+    if(isMobile){
+      this.cam.aspect=w/h; this.cam.updateProjectionMatrix();
+      const dir=new THREE.Vector3(0.34,0.30,0.5).normalize();
+      const baseDist=new THREE.Vector3(0.34,0.30,0.5).length();
+      const vHalf=(this.cam.fov*Math.PI)/360, hHalf=Math.atan(Math.tan(vHalf)*Math.max(w/h,0.2));
+      const fit=(R_ORBIT+R_SUN)*1.12;
+      const dist=Math.max(baseDist, fit/Math.tan(hHalf), fit/Math.tan(vHalf));
+      this.cam.position.copy(dir.multiplyScalar(dist)); this.cam.lookAt(0,0,0);
+      r.setViewport(0,0,w,h); r.setScissorTest(false); r.autoClear=true; r.render(this.scene,this.cam);
+      return;
+    }
     if(this.sc && this.sctx){
       const newW=portrait?w:Math.floor(w*0.5), newH=portrait?Math.floor(h*0.5):h;
       this.sc.style.position='absolute'; this.sc.style.left='0'; this.sc.style.top='0'; this.sc.style.width=newW+'px'; this.sc.style.height=newH+'px';

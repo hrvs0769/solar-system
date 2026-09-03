@@ -21,10 +21,13 @@ body.mobile #app canvas{display:block;width:100%;height:100%;touch-action:none}
 /* 右上角标：单行处理，防止换行后相互叠盖 */
 #scale-badge,#moon-badge{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100vw - 24px);font-size:11px}
 
-/* 通用按钮 */
-.m-btn{min-width:44px;min-height:44px;padding:0 14px;border-radius:12px;background:var(--panel);border:1px solid rgba(255,255,255,.1);color:var(--text);font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+/* 通用按钮（药丸形，触控友好，紧凑） */
+.m-btn{min-width:40px;min-height:38px;padding:0 13px;border-radius:19px;background:var(--panel);border:1px solid rgba(255,255,255,.1);color:var(--text);font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
 .m-btn:active{background:rgba(255,255,255,.16)}
 .m-btn.off{opacity:.45}
+
+/* 模块当前状态/读数等强调文本 */
+.m-title{color:var(--accent);font-size:15px;font-weight:600;width:100%;padding:2px 4px}
 
 /* 行星横滑条 */
 #m-planets{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;scrollbar-width:none;pointer-events:auto}
@@ -33,16 +36,19 @@ body.mobile #app canvas{display:block;width:100%;height:100%;touch-action:none}
 #m-planets .chip .dot{width:10px;height:10px;border-radius:50%}
 #m-planets .chip.active{border-color:var(--accent)}
 
-/* 模块控制行 */
-#m-module-ctx{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;pointer-events:auto;z-index:5}
+/* 中场弹性空间：撑起 3D 场景，让控件沉到底部 */
+#m-mid-space{flex:1;min-height:90px}
+/* 模块控制行（置于底部，圆角卡片，不盖住场景主角） */
+#m-module-ctx{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px 6px;pointer-events:auto;z-index:5;background:linear-gradient(0deg,rgba(8,12,24,.85),rgba(8,12,24,0));border-top:1px solid rgba(255,255,255,.06)}
 #m-module-ctx .row{display:flex;gap:8px;flex-wrap:wrap;width:100%}
+#m-module-ctx>div{max-width:100%}
 #m-module-ctx .evt-list{display:flex;flex-direction:column;gap:6px;width:100%;max-height:40vh;overflow:auto;background:var(--panel);border-radius:12px;padding:10px}
 #m-module-ctx .evt{pointer-events:auto;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);font-size:15px}
 #m-module-ctx .evt.active{border-color:var(--accent)}
 #m-module-ctx .evt .kind{color:var(--accent)}
 
 /* 时间条 */
-#m-time{display:flex;align-items:center;gap:8px;padding:10px 12px;margin-top:auto;margin-bottom:0;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:linear-gradient(0deg,rgba(8,12,24,.92),rgba(8,12,24,0));pointer-events:auto}
+#m-time{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:0;padding-bottom:calc(8px + env(safe-area-inset-bottom));background:linear-gradient(0deg,rgba(8,12,24,.92),rgba(8,12,24,0));pointer-events:auto}
 #m-date{font-size:17px;font-weight:600;min-width:130px;text-align:center}
 .m-rate{font-size:15px;min-width:auto;padding:0 12px}
 
