@@ -3,6 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <script>
+    // 手机/触屏窄屏设备自动进入手机专版(mobile.html)，避免在手机上加载桌面版导致错乱
+    (function(){
+      var ua = navigator.userAgent;
+      var isPhone = /Android|iPhone|iPod|Windows Phone|Mobile/i.test(ua);
+      var isTouchSmall = window.innerWidth < 820 && navigator.maxTouchPoints >= 2;
+      if(isPhone || isTouchSmall){ try{ location.replace('./mobile.html'); }catch(e){} }
+    })();
+  </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='28' fill='%23ffb454'/%3E%3C/svg%3E" />
   <title>璀璨太阳系 · 3D 太阳系教学系统</title>
 </head>
