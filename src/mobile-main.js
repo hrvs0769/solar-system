@@ -161,9 +161,19 @@ function buildTime(clock){
 function buildCtx(ctx){
   const mod = ctx.mod || {};
   const box=q('m-module-ctx');
+  const ctl=q('m-ctl');
+  // 一键收起/展开模块控件（手机上可把按钮藏起来只看纯净 3D 场景）
+  if(ctl && !buildCtx._wired){
+    buildCtx._wired=true;
+    ctl.addEventListener('click',()=>{
+      const collapsed = box.classList.toggle('collapsed');
+      ctl.textContent = collapsed ? '显示控件' : '收起控件';
+    });
+  }
   bus.on('module.activated', ({moduleId})=>{
-    box.innerHTML='';
+    box.innerHTML=''; box.classList.remove('collapsed');
     q('m-planets').classList.toggle('hidden', moduleId!=='orbit-view');
+    if(ctl){ const show=moduleId!=='orbit-view'; ctl.style.display=show?'':'none'; if(show) ctl.textContent='收起控件'; }
     if(moduleId==='moon-phases') moonCtx(box, mod.moonPhases, ctx.clock);
     else if(moduleId==='tides') tidesCtx(box, mod.tides);
     else if(moduleId==='eclipse') eclipseCtx(box, mod.eclipse, ctx.clock);
