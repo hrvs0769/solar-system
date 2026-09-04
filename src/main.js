@@ -208,6 +208,10 @@ async function boot(){
     const idle = !clock.running && currentId==='orbit-view' && !(lunarMission&&lunarMission.active) && camStr===lastCamStr && (now-lastInteract>600);
     lastCamStr = camStr;
     if(!idle) current.render();
+    // 启动画面：显示贴图加载进度（否则等待期像卡死）
+    if(!bootHidden && textureStore.progress){
+      const pr=textureStore.progress(); const el=document.querySelector('#boot-screen .s'); if(el) el.textContent=`已加载 ${pr.loaded}/${pr.total} 张贴图 · 首次使用请稍候…`;
+    }
     // 第一帧绘制后隐藏启动画面
     if(!bootHidden && renderer.info.render.calls>0){ bootHidden=true; hideBoot(); }
   };

@@ -21,7 +21,11 @@ export class TextureStore {
     this.cache = new Map();          // key -> THREE.Texture
     this._pending = new Map();       // key -> Promise
     this.tier = 'high';              // high|mid|low；low 时真实贴图降到约 1K
+    this._total = Object.keys(FILE).length + 1 + 1;   // 行星/太阳 + 云层 + 土星环
+    this._loaded = 0;
   }
+  // 贴图加载进度（用于启动画面百分比）
+  progress(){ return { loaded: this._loaded, total: this._total }; }
   setTier(t){ this.tier = t; }
   // 低档：把真实贴图降采样到一半分辨率（省显存/带宽，离线无感）
   _downscale(tex){
@@ -40,7 +44,7 @@ export class TextureStore {
     if(this.cache.has(key)) return Promise.resolve(this.cache.get(key));
     if(this._pending.has(key)) return this._pending.get(key);
     const p = new Promise(resolve => {
-      const done = tex => { this.cache.set(key, tex); resolve(tex); };
+      const done = tex => { this.cache.set(key, tex); this._loaded++; resolve(tex); };
       this.loader.load(base()+filename, tex => {
         tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
         if(this.tier==='low' && tex.image) tex = this._downscale(tex);
