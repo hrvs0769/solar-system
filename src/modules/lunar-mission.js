@@ -116,6 +116,7 @@ export class LunarMission {
   }
   _doStart(){
     const ctx=this.ctx;
+    this.ctx.missionActive=true; document.body.classList.add('mission-active'); // 先标记任务期，屏蔽无关 toast
     this._saved.rate=ctx.clock.rateIndex; this._saved.running=ctx.clock.running;
     ctx.clock.running=false;                                   // 冻结模拟时钟
     this._saved.moonMode=ctx.orbitView.moonMode; ctx.orbitView.setMoonMode('schematic'); // 强制月球示意
@@ -131,6 +132,7 @@ export class LunarMission {
     this._camera.tgt.copy(this._E);
     this.ctx.camera.position.copy(this._camera.pos); this.ctx.camera.up.copy(this._w); this.ctx.camera.lookAt(this._camera.tgt);
     this.active=true;
+    this.ctx.missionActive=true;
     this._build();
     this._setPhase('LAUNCH');
     this._buildUi();
@@ -301,8 +303,8 @@ export class LunarMission {
     const cam=this.ctx.camera;
     let tgt, d, dir=this._w.clone().multiplyScalar(0.85).addScaledVector(this._v,0.35).addScaledVector(this._u,0.25).normalize();
     switch(this.phase){
-      case 'LAUNCH': case 'ASCENT': case 'STAGE_SEP': tgt=this.rocket.position.clone(); d=0.10; break;
-      case 'EARTH_ORBIT': case 'TLI': tgt=this.rocket.position.clone(); d=0.14; break;
+      case 'LAUNCH': case 'ASCENT': case 'STAGE_SEP': tgt=this.rocket.position.clone(); d=0.17; break;
+      case 'EARTH_ORBIT': case 'TLI': tgt=this.rocket.position.clone(); d=0.24; break;
       case 'TRANSFER': tgt=this.change.position.clone(); d=0.30; break;
       case 'LOI': case 'LUNAR_ORBIT': tgt=this.change.position.clone(); d=0.10; break;
       case 'DESCENT': case 'LANDED': { const ln=this.change&&this.change.userData?this.change.userData.lander:null; tgt=ln?ln.position.clone():this.change.position.clone(); d=0.06; break; }
@@ -378,6 +380,7 @@ export class LunarMission {
     // 移除 UI
     ['mission-hud','mission-success'].forEach(id=>{ const el=document.getElementById(id); if(el) el.remove(); });
     document.body.classList.remove('mission-active');
+    this.ctx.missionActive=false;
     this.active=false; this.phase='IDLE'; this.pt=0;
     this._syncBtn();
     bus.emit('mission.end');

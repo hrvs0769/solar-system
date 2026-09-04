@@ -3,6 +3,7 @@ import { bus } from '../sim/bus.js';
 export function initToast(){
   const wrap = document.getElementById('toast');
   return bus.on('toast', ({ text, level='info' })=>{
+    if(level==='info' && document.body && document.body.classList.contains('mission-active')) return; // 任务期屏蔽提示类 toast
     const el = document.createElement('div');
     el.className = 'toast '+(level==='warn'?'warn':level==='err'?'err':level==='ok'?'ok':'');
     el.textContent = text;

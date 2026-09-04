@@ -351,7 +351,7 @@ function maybeShowMobileGuide(){
 
 // —— toast ——
 function buildToast(){
-  bus.on('toast', ({text,level='info'})=>{ const el=document.createElement('div'); el.className='toast '+(level==='warn'?'warn':level==='err'?'err':''); el.textContent=text; q('m-toast').appendChild(el); setTimeout(()=>el.remove(),3000); });
+  bus.on('toast', ({text,level='info'})=>{ if(level==='info' && document.body && document.body.classList.contains('mission-active')) return; const el=document.createElement('div'); el.className='toast '+(level==='warn'?'warn':level==='err'?'err':''); el.textContent=text; q('m-toast').appendChild(el); setTimeout(()=>el.remove(),3000); });
 }
 
 boot().catch(err=>{ console.error('mobile boot', err); document.body.innerHTML='<div style="padding:60px;text-align:center;color:#e8ecf5">启动出错：'+String(err&&err.message||err)+'</div>'; });
