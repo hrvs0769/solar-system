@@ -18,7 +18,7 @@ export class Seasons extends ModuleBase {
     this.sun=new THREE.Mesh(new THREE.SphereGeometry(R_SUN,48,48), new THREE.MeshBasicMaterial({color:0xffcf6b}));
     this.scene.add(this.sun);
     const light=new THREE.PointLight(0xffffff,2.8,0,0); this.scene.add(light);
-    const amb=new THREE.AmbientLight(0x668, 1.0); this.scene.add(amb);
+    const amb=new THREE.AmbientLight(0x778, 1.15); this.scene.add(amb);
     // 地球（倾斜轴）
     this.earthGroup=new THREE.Group(); this.scene.add(this.earthGroup);
     this.earth=new THREE.Mesh(new THREE.SphereGeometry(R_EARTH,48,48), new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.85}));
@@ -116,7 +116,7 @@ export class Seasons extends ModuleBase {
     if(!this.sctx) return;
     if(typeof document!=='undefined' && document.body && document.body.classList.contains('mobile')) return; // 手机端不画桌面示意图
     const cv=this.sc, w=cv.width, h=cv.height, g=this.sctx;
-    g.clearRect(0,0,w,h); g.fillStyle='#0a0f1c'; g.fillRect(0,0,w,h); g.fillStyle='#10182c'; g.fillRect(20,20,w-40,h-40);
+    g.clearRect(0,0,w,h); const bg=g.createLinearGradient(0,0,0,h); bg.addColorStop(0,'#0d1526'); bg.addColorStop(1,'#05080f'); g.fillStyle=bg; g.fillRect(0,0,w,h); g.fillStyle='#10182c'; g.fillRect(20,20,w-40,h-40);
     const cx=w*0.5, cy=h*0.5, R=Math.min(w,h)*0.24;
     g.fillStyle='#c8d2e2'; g.font='14px sans-serif'; g.textAlign='left'; g.fillText('示意图 · 地轴倾斜 23.4°，方向不变', 30, 42);
     g.save(); g.translate(cx, cy);
@@ -126,7 +126,9 @@ export class Seasons extends ModuleBase {
     g.strokeStyle='rgba(255,213,74,.6)'; g.lineWidth=1.5;
     for(let i=-2;i<=2;i++){ const off=i*R*0.42; g.beginPath(); g.moveTo(R*3.4, offRoi(off,0)); g.lineTo(R*1.0, offRoi(off,0)); g.stroke(); }
     function offRoi(o,y){ return y+o*0.32; }
-    // 太阳（右侧亮球）
+    // 太阳（右侧亮球，带光晕）
+    const sg=g.createRadialGradient(R*3.7,0,R*0.1, R*3.7,0,R*1.5); sg.addColorStop(0,'rgba(255,207,107,.85)'); sg.addColorStop(1,'rgba(255,207,107,0)');
+    g.fillStyle=sg; g.beginPath(); g.arc(R*3.7,0,R*1.5,0,Math.PI*2); g.fill();
     g.beginPath(); g.arc(R*3.7, 0, R*0.5, 0, Math.PI*2); g.fillStyle='#ffcf6b'; g.fill();
     g.fillStyle='#e8ecf5'; g.font='13px sans-serif'; g.textAlign='center'; g.fillText('太阳', R*3.7, R*0.72);
     // 地球

@@ -100,7 +100,7 @@ export class Eclipse extends ModuleBase {
     if(!this.sctx) return;
     if(typeof document!=='undefined' && document.body && document.body.classList.contains('mobile')) return; // 手机端不画桌面示意图
     const cv=this.sc, w=cv.width, h=cv.height, g=this.sctx;
-    g.clearRect(0,0,w,h); g.fillStyle='#0a0f1c'; g.fillRect(0,0,w,h); g.fillStyle='#10182c'; g.fillRect(20,20,w-40,h-40);
+    g.clearRect(0,0,w,h); const bg=g.createLinearGradient(0,0,0,h); bg.addColorStop(0,'#0d1526'); bg.addColorStop(1,'#05080f'); g.fillStyle=bg; g.fillRect(0,0,w,h); g.fillStyle='#10182c'; g.fillRect(20,20,w-40,h-40);
     const cx=w*0.45, cy=h*0.6, R=Math.min(w,h)*0.10;
     g.fillStyle='#c8d2e2'; g.font='14px sans-serif'; g.textAlign='left'; g.fillText('成因示意 · 为什么不是每月都发生日月食', 30, 42);
     g.save(); g.translate(cx,cy);
@@ -109,7 +109,9 @@ export class Eclipse extends ModuleBase {
     g.setLineDash([6,5]); g.strokeStyle='rgba(255,213,74,.5)'; g.lineWidth=1.5;
     g.beginPath(); g.moveTo(-R*2.9,0); g.lineTo(sunX-R*0.6,0); g.stroke(); g.setLineDash([]);
     g.fillStyle='rgba(255,213,74,.7)'; g.font='12px sans-serif'; g.textAlign='center'; g.fillText('黄道面', -R*2.4, 16);
-    // 太阳
+    // 太阳（带光晕）
+    const sg=g.createRadialGradient(sunX,0,R*0.1, sunX,0,R*1.6); sg.addColorStop(0,'rgba(255,213,74,.9)'); sg.addColorStop(1,'rgba(255,213,74,0)');
+    g.fillStyle=sg; g.beginPath(); g.arc(sunX,0,R*1.6,0,Math.PI*2); g.fill();
     g.beginPath(); g.arc(sunX,0,R*0.7,0,Math.PI*2); g.fillStyle='#ffd54a'; g.fill();
     g.fillStyle='#e8ecf5'; g.font='12px sans-serif'; g.fillText('太阳', sunX, R*0.95);
     // 月球轨道（倾斜≈5°）

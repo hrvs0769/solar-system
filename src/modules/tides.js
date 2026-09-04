@@ -41,7 +41,7 @@ export class Tides extends ModuleBase {
     this.scene.add(this.earth);
     textureStore.surface('earth').then(t=>{ if(t){ this.earth.material.map=t; this.earth.material.needsUpdate=true; } });
     this.waterMat = new THREE.ShaderMaterial({ vertexShader:VERT, fragmentShader:FRAG,
-      uniforms:{ uMoonDir:{value:new THREE.Vector3(0,0,-1)}, uSunDir:{value:new THREE.Vector3(1,0,0)}, uExag:{value:0.014}, uW:{value:new THREE.Vector2(2.2,1.0)}, uSea:{value:new THREE.Color(0x3fa2ff)}, uLight:{value:new THREE.Vector3(0.5,0.8,1)} },
+      uniforms:{ uMoonDir:{value:new THREE.Vector3(0,0,-1)}, uSunDir:{value:new THREE.Vector3(1,0,0)}, uExag:{value:0.017}, uW:{value:new THREE.Vector2(2.2,1.0)}, uSea:{value:new THREE.Color(0x4db3ff)}, uLight:{value:new THREE.Vector3(0.5,0.8,1)} },
       transparent:true, depthWrite:false, side:THREE.DoubleSide });
     this.water = new THREE.Mesh(new THREE.IcosahedronGeometry(R_EARTH*1.03, 64), this.waterMat);
     this.scene.add(this.water);
@@ -146,7 +146,9 @@ export class Tides extends ModuleBase {
     const cv=this.sc, w=cv.width, h=cv.height, g=this.sctx;
     g.clearRect(0,0,w,h);
     // 深色背景
-    g.fillStyle='#0a0f1c'; g.fillRect(0,0,w,h);
+    // 深色渐变背景（比平铺更精致）
+    const bg=g.createLinearGradient(0,0,0,h); bg.addColorStop(0,'#0d1526'); bg.addColorStop(1,'#05080f');
+    g.fillStyle=bg; g.fillRect(0,0,w,h);
     g.fillStyle='#10182c'; g.fillRect(20,20,w-40,h-40);
     const cx=w*0.5, cy=h*0.5;
     const ang=Math.atan2(mdir.z,mdir.x), sunAng=Math.atan2(sdir.z,sdir.x), sunRel=sunAng-ang;
@@ -167,7 +169,10 @@ export class Tides extends ModuleBase {
     g.fillStyle='rgba(111,192,255,.30)'; g.fill();
     g.lineWidth=2.5; g.strokeStyle='#8fd0ff'; g.stroke();
     // 地球圆盘
-    g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.fillStyle='#2f6fb0'; g.fill();
+    // 地球圆盘（径向渐变更立体）
+    const eg=g.createRadialGradient(-R*0.3,-R*0.3,R*0.1, 0,0,R);
+    eg.addColorStop(0,'#7fb2ff'); eg.addColorStop(1,'#1f4a7a');
+    g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.fillStyle=eg; g.fill();
     g.lineWidth=2; g.strokeStyle='#7fb2ff'; g.stroke();
     // 两个隆起端部小标注 + 箭头
     g.fillStyle='#6fc0ff'; g.font='13px sans-serif'; g.textAlign='center';
