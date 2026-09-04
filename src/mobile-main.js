@@ -314,7 +314,8 @@ function buildModals(ctx){
   q('m-prop')?.addEventListener('click',()=>{ const ov=ctx.orbitView || window.__SS?.orbitView; ov?.toggleProportion(); });
   q('m-label')?.addEventListener('click',()=>{ const ov=ctx.orbitView || window.__SS?.orbitView; if(!ov) return; ov.toggleLabels(); const e=q('m-label'); if(e){ e.textContent = ov.labelsVisible?'标签':'标签·关'; e.classList.toggle('off', !ov.labelsVisible); } });
   q('m-mission')?.addEventListener('click',()=>{ const lm=ctx.lunarMission; if(!lm) return; if(lm.active){ lm.cancel(); return; }
-    if(currentId!=='orbit-view'){ bus.emit('module.switch',{moduleId:'orbit-view'}); setTimeout(()=>lm.start(), 250); }
+    const cur=(window.__SS && window.__SS.currentId) || 'orbit-view';
+    if(cur!=='orbit-view'){ bus.emit('module.switch',{moduleId:'orbit-view'}); setTimeout(()=>lm.start(), 250); }
     else lm.start(); });
   // 截图分享
   q('m-shot')?.addEventListener('click',()=>{
