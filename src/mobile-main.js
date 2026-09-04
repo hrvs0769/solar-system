@@ -127,7 +127,7 @@ async function boot(){
 
   window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); labelRenderer.setSize(window.innerWidth,window.innerHeight); });
 
-  window.__SS = { renderer, get scene(){return system.scene;}, get camera(){return camera;}, cameraRig, clock, quality, bus, get orbitView(){return orbitView;}, get currentId(){return currentId;} };
+  window.__SS = { renderer, get scene(){return system.scene;}, get camera(){return camera;}, cameraRig, clock, quality, bus, get orbitView(){return orbitView;}, satellite, get currentId(){return currentId;} };
 }
 
 // —— 行星横滑条 ——

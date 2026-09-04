@@ -84,6 +84,8 @@ export class Satellite extends ModuleBase {
   constructor(ctx){ super(ctx); this.mode='overview'; this._orbitA=0; }
 
   enter(){
+    // 手机端默认进"看卫星细节"，让卫星大而居中、一眼可见；桌面端默认看全貌（地球+轨道）
+    this.mode = (typeof document!=='undefined' && document.body && document.body.classList.contains('mobile')) ? 'detail' : 'overview';
     this.ctx.clock.setRate(2); // 1秒=1小时（卫星公转可见）
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(0x050810);
     this.cam = new THREE.PerspectiveCamera(50,1,0.001,50);
@@ -188,9 +190,13 @@ export class Satellite extends ModuleBase {
       this.cam.position.copy(satPos.clone().add(viewDir.multiplyScalar(d)));
       this.cam.lookAt(satPos);
     } else {
-      // 全貌：看地球 + 卫星轨道
+      // 全貌：看地球 + 卫星轨道；竖屏窄边按宽高比自动拉远，保证轨道+卫星不被裁切
       const dir=new THREE.Vector3(0.9,0.55,1.1).normalize();
-      const d=1.35;
+      const w=this.ctx.renderer.domElement.clientWidth, h=this.ctx.renderer.domElement.clientHeight;
+      const aspect=w/h, baseDist=1.35;
+      const vHalf=(this.cam.fov*Math.PI)/360, hHalf=Math.atan(Math.tan(vHalf)*Math.max(aspect,0.2));
+      const fit=R_ORBIT*1.4+0.2;
+      const d=Math.max(baseDist, fit/Math.tan(hHalf), fit/Math.tan(vHalf));
       this.cam.position.copy(dir.multiplyScalar(d));
       this.cam.lookAt(0,0,0);
     }
