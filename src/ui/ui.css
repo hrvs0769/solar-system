@@ -54,6 +54,8 @@ select,input[type=date],input[type=text]{background:var(--panel-solid);color:var
 #info-panel{position:absolute;right:12px;top:64px;width:320px;max-height:calc(100% - 130px);overflow:auto;background:var(--panel);padding:16px;border-radius:var(--radius);border:1px solid rgba(255,255,255,.1);display:none}
 #info-panel.open{display:block}
 body.info-open #scale-badge, body.info-open #moon-badge, body.info-open #view-tools{display:none}
+/* 奔月任务期间：隐藏全景常规 UI（行星菜单/工具条/角标），只留任务 HUD 与停止按钮 */
+body.mission-active #planet-menu, body.mission-active #view-tools, body.mission-active #scale-badge, body.mission-active #moon-badge, body.mission-active #info-panel{display:none}
 #info-panel h2{font-size:calc(20px*var(--ui-s));margin-bottom:4px;color:var(--accent)}
 #info-panel .sub{color:var(--muted);font-size:calc(13px*var(--ui-s));margin-bottom:10px}
 #info-panel table{width:100%;border-collapse:collapse;font-size:calc(14px*var(--ui-s))}

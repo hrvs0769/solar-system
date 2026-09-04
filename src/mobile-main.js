@@ -16,6 +16,7 @@ import { Tides } from './modules/tides.js';
 import { Eclipse } from './modules/eclipse.js';
 import { Seasons } from './modules/seasons.js';
 import { Satellite } from './modules/satellite.js';
+import { LunarMission } from './modules/lunar-mission.js';
 import { fmtJdLocal, jdToDate, dateToJd } from './sim/timeutil.js';
 import { FACTS } from './data/planet-facts.js';
 import { listBookmarks, saveCurrentBookmark, applyBookmark } from './ui/bookmarks.js';
@@ -69,12 +70,15 @@ async function boot(){
   const satellite = new Satellite(ctx);
   const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'tides':tides, 'eclipse':eclipse, 'seasons':seasons, 'satellite':satellite };
   ctx.mod = { moonPhases, tides, eclipse, seasons, satellite };
+  const lunarMission = new LunarMission(ctx);
+  ctx.lunarMission = lunarMission;
   let current = orbitView, currentId='orbit-view';
   cameraRig.bodyPosFn = id => orbitView.getPos(id) || {x:0,y:0,z:0};
   ctx.orbitView = orbitView;
 
   function switchModule(id){
     if(id===currentId) return;
+    if(lunarMission && lunarMission.active) lunarMission.cancel();   // 切模块自动取消奔月任务
     current.exit();
     const ov = document.getElementById('module-overlay'); if(ov) ov.innerHTML='';
     q('m-info').classList.remove('open');
@@ -101,8 +105,9 @@ async function boot(){
       const dt=Math.min((now-last)/1000,0.1); last=now;
       clock.tick(dt); astro.beginFrame(clock.jd);
       current.update(dt); cameraRig.update(dt); quality.sample(dt);
+      if(lunarMission && lunarMission.active) lunarMission.update(dt);
       const camStr = camera.matrixWorld.elements.join(",")+"|"+cameraRig.controls.target.toArray().join(",");
-      const idle = !clock.running && currentId==="orbit-view" && camStr===lastCamStr && (now-lastInteract>600);
+      const idle = !clock.running && currentId==="orbit-view" && !(lunarMission&&lunarMission.active) && camStr===lastCamStr && (now-lastInteract>600);
       lastCamStr = camStr;
       if(!idle) current.render();
       if(!bootHidden && renderer.info.render.calls>0){ bootHidden=true; hideBoot(); }
@@ -127,7 +132,7 @@ async function boot(){
 
   window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); labelRenderer.setSize(window.innerWidth,window.innerHeight); });
 
-  window.__SS = { renderer, get scene(){return system.scene;}, get camera(){return camera;}, cameraRig, clock, quality, bus, get orbitView(){return orbitView;}, satellite, get currentId(){return currentId;} };
+  window.__SS = { renderer, get scene(){return system.scene;}, get camera(){return camera;}, cameraRig, clock, quality, bus, get orbitView(){return orbitView;}, satellite, lunarMission, get currentId(){return currentId;} };
 }
 
 // —— 行星横滑条 ——
@@ -305,6 +310,9 @@ function buildModals(ctx){
   q('m-fs').addEventListener('click',()=>{ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen?.(); });
   q('m-prop')?.addEventListener('click',()=>{ const ov=ctx.orbitView || window.__SS?.orbitView; ov?.toggleProportion(); });
   q('m-label')?.addEventListener('click',()=>{ const ov=ctx.orbitView || window.__SS?.orbitView; if(!ov) return; ov.toggleLabels(); const e=q('m-label'); if(e){ e.textContent = ov.labelsVisible?'标签':'标签·关'; e.classList.toggle('off', !ov.labelsVisible); } });
+  q('m-mission')?.addEventListener('click',()=>{ const lm=ctx.lunarMission; if(!lm) return; if(lm.active){ lm.cancel(); return; }
+    if(currentId!=='orbit-view'){ bus.emit('module.switch',{moduleId:'orbit-view'}); setTimeout(()=>lm.start(), 250); }
+    else lm.start(); });
   // 截图分享
   q('m-shot')?.addEventListener('click',()=>{
     let url=null; try{ url=ctx.renderer.domElement.toDataURL('image/png'); }catch(e){}

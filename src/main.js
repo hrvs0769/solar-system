@@ -16,6 +16,7 @@ import { Tides } from './modules/tides.js';
 import { Eclipse } from './modules/eclipse.js';
 import { Seasons } from './modules/seasons.js';
 import { Satellite } from './modules/satellite.js';
+import { LunarMission } from './modules/lunar-mission.js';
 import { initTopbar } from './ui/topbar.js';
 import { initTimeControls } from './ui/time-controls.js';
 import { initZoomSlider } from './ui/zoom-slider.js';
@@ -80,12 +81,15 @@ async function boot(){
   cameraRig.bodyPosFn = id => (orbitView && orbitView.getPos(id)) || {x:0,y:0,z:0};
 
   const orbitView = new OrbitView(ctx);
+  ctx.orbitView = orbitView;
   const moonPhases = new MoonPhases(ctx);
   const tides = new Tides(ctx);
   const eclipse = new Eclipse(ctx);
   const seasons = new Seasons(ctx);
   const satellite = new Satellite(ctx);
   const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'tides':tides, 'eclipse':eclipse, 'seasons':seasons, 'satellite':satellite };
+  const lunarMission = new LunarMission(ctx);
+  ctx.lunarMission = lunarMission;
   let current = modules['orbit-view'];
   let currentId = 'orbit-view';
 
@@ -99,6 +103,7 @@ async function boot(){
   }
   function switchModule(id){
     if(id===currentId) return;
+    if(lunarMission && lunarMission.active) lunarMission.cancel();   // 切模块自动取消奔月任务
     if(currentId !== 'orbit-view') clock.setRate(preModuleRate);   // 离开模块恢复原倍速
     if(id !== 'orbit-view') preModuleRate = clock.rateIndex;       // 进入模块前记住
     current.exit();
@@ -128,6 +133,7 @@ async function boot(){
   document.getElementById('vt-moon')?.addEventListener('click', ()=>orbitView.cycleMoonMode());
   document.getElementById('vt-kepler')?.addEventListener('click', ()=>orbitView.toggleKepler());
   document.getElementById('vt-label')?.addEventListener('click', ()=>orbitView.toggleLabels());
+  document.getElementById('vt-mission')?.addEventListener('click', ()=> lunarMission.active ? lunarMission.cancel() : lunarMission.start());
   // 今晚真实月相角标（每分钟刷新）
   const updateMoonBadge=()=>{ const b=document.getElementById('moon-badge'); if(!b) return;
     const {fraction,angle}=getPhase(dateToJd(new Date())); b.textContent=`今晚月相：${phaseName(fraction,angle)} · 照亮${(fraction*100).toFixed(0)}%`; };
@@ -195,10 +201,11 @@ async function boot(){
     astro.beginFrame(clock.jd);
     current.update(dt);
     cameraRig.update(dt);
+    if(lunarMission && lunarMission.active) lunarMission.update(dt);   // 奔月任务（控制相机/对象）
     quality.sample(dt);
     // 空闲省电：暂停 + 全景 + 相机静止 + 最近无交互 → 跳过渲染
     const camStr = camera.matrixWorld.elements.join(',') + '|' + cameraRig.controls.target.toArray().join(',');
-    const idle = !clock.running && currentId==='orbit-view' && camStr===lastCamStr && (now-lastInteract>600);
+    const idle = !clock.running && currentId==='orbit-view' && !(lunarMission&&lunarMission.active) && camStr===lastCamStr && (now-lastInteract>600);
     lastCamStr = camStr;
     if(!idle) current.render();
     // 第一帧绘制后隐藏启动画面
@@ -214,7 +221,7 @@ async function boot(){
   setTimeout(()=>maybeShowGuide(), 1200);   // 首次打开引导
 
   /* 调试暴露（供截图自检读取渲染/场景状态） */
-  window.__SS = { renderer, get scene(){ return system.scene; }, get camera(){ return camera; }, get starfield(){ return system.starfield; }, cameraRig, clock, quality, bus, get orbitView(){ return orbitView; }, moonPhases, tides, eclipse, seasons, satellite, get currentId(){ return currentId; } };
+  window.__SS = { renderer, get scene(){ return system.scene; }, get camera(){ return camera; }, get starfield(){ return system.starfield; }, cameraRig, clock, quality, bus, get orbitView(){ return orbitView; }, moonPhases, tides, eclipse, seasons, satellite, lunarMission, get currentId(){ return currentId; } };
 }
 
 boot().catch(err=>{
