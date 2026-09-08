@@ -207,7 +207,10 @@ async function boot(){
     const camStr = camera.matrixWorld.elements.join(',') + '|' + cameraRig.controls.target.toArray().join(',');
     const idle = !clock.running && currentId==='orbit-view' && !(lunarMission&&lunarMission.active) && camStr===lastCamStr && (now-lastInteract>600);
     lastCamStr = camStr;
-    if(!idle) current.render();
+    if(!idle){
+      if(lunarMission && lunarMission.active) lunarMission.render();   // 奔月电影模块（独立 scene）
+      else current.render();
+    }
     // 启动画面：显示贴图加载进度（否则等待期像卡死）
     if(!bootHidden && textureStore.progress){
       const pr=textureStore.progress(); const el=document.querySelector('#boot-screen .s'); if(el) el.textContent=`已加载 ${pr.loaded}/${pr.total} 张贴图 · 首次使用请稍候…`;

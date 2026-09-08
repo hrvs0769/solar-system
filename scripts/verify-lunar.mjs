@@ -35,7 +35,7 @@ for(let i=0;i<70;i++){
   if(okModal) break;
   await sleep(1200);
 }
-const expect=['COUNTDOWN','IGNITION','LIFTOFF','AERIAL','STAGE_SEP','EARTH_ORBIT','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
+const expect=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
 ok('阶段序列完整且顺序正确', expect.every(x=>seq.includes(x)) && seq[0]==='COUNTDOWN' && seq[seq.length-1]==='LANDED', JSON.stringify(seq));
 ok('着陆后弹出成功提示', okModal);
 ok('无页面报错', perr.length===0, perr.join('; '));
