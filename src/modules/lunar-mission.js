@@ -117,6 +117,15 @@ export class LunarMission {
     this.linePark=this._mkLine(k=>this._park(k*Math.PI*2), 0x7fd0ff);
     this.lineTransfer=this._mkLine(k=>this._transfer(k*Math.PI), 0xffd54a);
     this.lineLunar=this._mkLine(k=>this._lunar(k*Math.PI*2), 0x8fd0ff);
+    // 地月转移"近快远慢"速度箭头（开普勒第二定律）
+    this.speedArrows=new THREE.Group(); this.speedArrows.visible=false; this.scene.add(this.speedArrows);
+    const a=(PARK+MD)/2;
+    for(let i=0;i<7;i++){ const nu=Math.PI*i/6, r=this._transferR(nu);
+      const p=this._transfer(nu);
+      const dir=this._transfer(nu+0.03).sub(this._transfer(nu-0.03)).normalize();
+      const sp=Math.sqrt(Math.max(0, 2/r - 1/a));
+      this.speedArrows.add(new THREE.ArrowHelper(dir, p, 0.35+sp*1.35, 0xffb454, 0.22, 0.12));
+    }
     this._built=true;
   }
   _loadTex(key, cb){ try{ textureStore.surface(key).then(cb).catch(()=>{}); }catch(e){} }
@@ -148,13 +157,13 @@ export class LunarMission {
     if(p==='SPHERE'){ this.plumeR.visible=false; }
     if(p==='STAGE_SEP'){ this.plumeR.visible=false; this.stageSepT=0; }
     if(p==='EARTH_ORBIT'){ this.change.visible=true; this.rocket.visible=false; this.linePark.visible=true; }
-    if(p==='TRANSFER'){ this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); }
-    if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); }
+    if(p==='TRANSFER'){ this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; }
+    if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); if(this.speedArrows) this.speedArrows.visible=false; }
     if(p==='LUNAR_ORBIT'){ this.plumeC.visible=false; this._lam=0; this._reveal(this.lineLunar,0); this.lineTransfer.visible=false; }
     if(p==='LANDING'){ this._detachLander(); this.plumeC.visible=true; if(this.landLight) this.landLight.intensity=2.2; }
     if(p==='LANDED'){ this.plumeC.visible=false; this._showSuccess(); }
   }
-  _hideLines(){ [this.linePark,this.lineTransfer,this.lineLunar].forEach(l=>{ if(l){ l.visible=false; if(l.geometry) l.geometry.setDrawRange(0,0); } }); }
+  _hideLines(){ [this.linePark,this.lineTransfer,this.lineLunar].forEach(l=>{ if(l){ l.visible=false; if(l.geometry) l.geometry.setDrawRange(0,0); } }); if(this.speedArrows) this.speedArrows.visible=false; }
 
   _pointUp(obj,dir){ if(!obj||!dir||dir.lengthSq()<1e-10) return; obj.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize()); }
   _spawnSteam(){
@@ -265,9 +274,9 @@ export class LunarMission {
       case 'STAGE_SEP': pos.set(0.9, 2.0, 1.3); tgt.copy(this.rocket.position); up.set(0,1,0); break;
       case 'EARTH_ORBIT': pos.set(0.6, 0.5, 0.7).add(this.change.position); tgt.copy(this.change.position); up.set(0,1,0); break;
       case 'TRANSFER': { const d=this.change.position; pos.set(d.x*0.5, 3.0, d.x*0.6+1.0); tgt.copy(d); up.set(0,1,0); break; }
-      case 'LOI': { const d=this._closeup?0.14:1.6; pos.copy(this.change.position).add(new THREE.Vector3(d*0.45, d*0.8, d*0.3)); tgt.copy(this.change.position); up.set(0,1,0); break; }
-      case 'LUNAR_ORBIT': { const d=this._closeup?0.14:1.7; pos.copy(this.change.position).add(new THREE.Vector3(d*0.45, d*0.8, d*0.3)); tgt.copy(this.change.position); up.set(0,1,0); break; }
-      case 'LANDING': case 'LANDED': { const lp=lander.position; pos.copy(lp).add(new THREE.Vector3(-0.07,0,0.14)); tgt.copy(lp); up.set(-1,0,0); break; }
+      case 'LOI': { const d=this._closeup?0.11:1.6; pos.copy(this.change.position).add(new THREE.Vector3(d*0.45, d*0.8, d*0.3)); tgt.copy(this.change.position); up.set(0,1,0); break; }
+      case 'LUNAR_ORBIT': { const d=this._closeup?0.11:1.7; pos.copy(this.change.position).add(new THREE.Vector3(d*0.45, d*0.8, d*0.3)); tgt.copy(this.change.position); up.set(0,1,0); break; }
+      case 'LANDING': case 'LANDED': { const lp=lander.position; pos.copy(lp).add(new THREE.Vector3(-0.06,0,0.11)); tgt.copy(lp); up.set(-1,0,0); break; }
       default: pos.set(0,2.4,2.0); tgt.set(0,0,0); up.set(0,1,0);
     }
     return {pos,tgt,up};
