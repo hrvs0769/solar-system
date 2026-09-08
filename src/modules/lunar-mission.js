@@ -12,6 +12,7 @@ const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升�
 
 function tex(cb){ const c=document.createElement('canvas'); c.width=128; c.height=64; cb(c.getContext('2d')); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
 const ease=t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function softDot(){ const c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d'); const gr=g.createRadialGradient(16,16,0,16,16,16); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.4,'rgba(255,255,255,.55)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=gr; g.fillRect(0,0,32,32); const t=new THREE.CanvasTexture(c); return t; }
 function goldTex(){ return tex(g=>{ g.fillStyle='#8a6a1e'; g.fillRect(0,0,128,64); for(let y=0;y<64;y+=2){ const b=0.72+0.28*((y*31)%9)/9; g.fillStyle=`rgb(${Math.round(190*b)},${Math.round(140*b)},${Math.round(45*b)})`; g.fillRect(0,y,128,2); } }); }
 function solarTex(){ return tex(g=>{ g.fillStyle='#06132e'; g.fillRect(0,0,128,64); for(let y=0;y<4;y++)for(let x=0;x<8;x++){ const b=0.26+0.16*((x*7+y*13)%9)/9; g.fillStyle=`rgb(${Math.round(18+b*50)},${Math.round(45+b*70)},${Math.round(110+b*95)})`; g.fillRect(x*16+1,y*16+1,14,14); } for(let x=0;x<=8;x++){ g.strokeStyle='rgba(210,230,255,.3)'; g.beginPath(); g.moveTo(x*16,0); g.lineTo(x*16,64); g.stroke(); } for(let y=0;y<=4;y++){ g.beginPath(); g.moveTo(0,y*16); g.lineTo(128,y*16); g.stroke(); } }); }
 
@@ -23,8 +24,8 @@ function buildWenchang(){
   const bldMat=new THREE.MeshStandardMaterial({color:0xcfd4da, metalness:.3, roughness:.6});
   const steelMat=new THREE.MeshStandardMaterial({color:0x9aa2ae, metalness:.7, roughness:.5});
   const seaMat=new THREE.MeshStandardMaterial({color:0x2a6fa8, roughness:.4, metalness:.1});
-  const ground=new THREE.Mesh(new THREE.CircleGeometry(0.24,48), groundMat); ground.rotation.x=-Math.PI/2; g.add(ground);
-  const sea=new THREE.Mesh(new THREE.CircleGeometry(0.5,48), seaMat); sea.rotation.x=-Math.PI/2; sea.position.set(0.32,-0.012,0); g.add(sea);
+  const ground=new THREE.Mesh(new THREE.CircleGeometry(0.15,40), groundMat); ground.rotation.x=-Math.PI/2; g.add(ground);
+  const sea=new THREE.Mesh(new THREE.CircleGeometry(0.05,40), seaMat); sea.rotation.x=-Math.PI/2; sea.position.set(0.17,-0.004,0); g.add(sea);
   for(let i=-2;i<=2;i++){ const r=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.0015,0.006), roadMat); r.position.set(0,0.002,i*0.05); g.add(r);
     const r2=new THREE.Mesh(new THREE.BoxGeometry(0.006,0.0015,0.42), roadMat); r2.position.set(i*0.05,0.002,0); g.add(r2); }
   const pad=new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.02,0.008,20), steelMat); g.add(pad);
@@ -71,8 +72,11 @@ function buildChange(){
   g.userData.lander=lander; g.userData.svc=svc;
   return g;
 }
-function buildPlume(){ const g=new THREE.Group(); const cone=new THREE.Mesh(new THREE.ConeGeometry(0.006,0.024,16), new THREE.MeshBasicMaterial({color:0xffa64d, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false})); cone.rotation.x=Math.PI; cone.position.y=-0.012; g.add(cone); g.userData.cone=cone; g.visible=false; return g; }
-function buildSteam(){ const N=120, geo=new THREE.BufferGeometry(), arr=new Float32Array(N*3); geo.setAttribute('position',new THREE.BufferAttribute(arr,3)); const mat=new THREE.PointsMaterial({color:0xdfe8f2, size:0.02, transparent:true, opacity:0, depthWrite:false, sizeAttenuation:true}); const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[]}; return pts; }
+function buildPlume(){ const g=new THREE.Group();
+  const outer=new THREE.Mesh(new THREE.ConeGeometry(0.012,0.06,16), new THREE.MeshBasicMaterial({color:0xff8c2a, transparent:true, opacity:0.7, blending:THREE.AdditiveBlending, depthWrite:false})); outer.rotation.x=Math.PI; outer.position.y=-0.04; g.add(outer);
+  const inner=new THREE.Mesh(new THREE.ConeGeometry(0.006,0.05,16), new THREE.MeshBasicMaterial({color:0xfff0a8, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false})); inner.rotation.x=Math.PI; inner.position.y=-0.038; g.add(inner);
+  g.userData.cone=outer; g.visible=false; return g; }
+function buildSteam(){ const N=220, geo=new THREE.BufferGeometry(), arr=new Float32Array(N*3); geo.setAttribute('position',new THREE.BufferAttribute(arr,3)); const mat=new THREE.PointsMaterial({color:0xe6eef6, size:0.014, map:softDot(), transparent:true, opacity:0, depthWrite:false, sizeAttenuation:true}); const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[]}; return pts; }
 
 export class LunarMission {
   constructor(ctx){
@@ -124,7 +128,7 @@ export class LunarMission {
       const p=this._transfer(nu);
       const dir=this._transfer(nu+0.03).sub(this._transfer(nu-0.03)).normalize();
       const sp=Math.sqrt(Math.max(0, 2/r - 1/a));
-      this.speedArrows.add(new THREE.ArrowHelper(dir, p, 0.35+sp*1.35, 0xffb454, 0.22, 0.12));
+      this.speedArrows.add(new THREE.ArrowHelper(dir, p, 0.12+sp*0.42, 0xffb454, 0.045, 0.03));
     }
     this._built=true;
   }
@@ -160,32 +164,34 @@ export class LunarMission {
     if(p==='TRANSFER'){ this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; }
     if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); if(this.speedArrows) this.speedArrows.visible=false; }
     if(p==='LUNAR_ORBIT'){ this.plumeC.visible=false; this._lam=0; this._reveal(this.lineLunar,0); this.lineTransfer.visible=false; }
-    if(p==='LANDING'){ this._detachLander(); this.plumeC.visible=true; if(this.landLight) this.landLight.intensity=2.2; }
+    if(p==='LANDING'){ this._detachLander(); this.plumeC.visible=true; if(this.plumeC) this.plumeC.scale.setScalar(1.4); if(this.landLight) this.landLight.intensity=2.2; }
     if(p==='LANDED'){ this.plumeC.visible=false; this._showSuccess(); }
   }
   _hideLines(){ [this.linePark,this.lineTransfer,this.lineLunar].forEach(l=>{ if(l){ l.visible=false; if(l.geometry) l.geometry.setDrawRange(0,0); } }); if(this.speedArrows) this.speedArrows.visible=false; }
+  _fadeWenchang(a){ if(!this.wenchang) return; this.wenchang.traverse(o=>{ if(o.material){ o.material.transparent=true; o.material.opacity=Math.max(0,Math.min(1,a)); } }); }
 
   _pointUp(obj,dir){ if(!obj||!dir||dir.lengthSq()<1e-10) return; obj.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize()); }
   _spawnSteam(){
-    const pts=this.steam, N=120, arr=pts.geometry.attributes.position.array;
+    const pts=this.steam, N=220, arr=pts.geometry.attributes.position.array;
     pts.userData.parts=[];
-    for(let i=0;i<N;i++){ const a=Math.random()*Math.PI*2, r=0.02+Math.random()*0.05;
-      const x=this._site.x+Math.cos(a)*r, y=RE+0.01, z=Math.sin(a)*r;
-      pts.userData.parts.push({x,y,z,vx:Math.cos(a)*0.03, vy:0.02+Math.random()*0.04, vz:Math.sin(a)*0.03, life:1});
-      arr[i*3]=x; arr[i*3+1]=y; arr[i*3+2]=z; }
-    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=0.85;
+    for(let i=0;i<N;i++){ const a=Math.random()*Math.PI*2, r=0.015+Math.random()*0.04;
+      const x=this._site.x+Math.cos(a)*r, y=RE+0.005, z=this._site.z+Math.sin(a)*r;
+      pts.userData.parts.push({x,y,z,vx:Math.cos(a)*0.05, vy:0.02+Math.random()*0.05, vz:Math.sin(a)*0.05, life:1, s:0.6+Math.random()*0.6}); }
+    arr.forEach((v,i)=>{ /* 先填满 */ });
+    pts.userData.parts.forEach((p,i)=>{ arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z; });
+    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=0.7;
   }
   _updateSteam(dt){
     const pts=this.steam, arr=pts.geometry.attributes.position.array;
     if(!pts.visible) return; let alive=0;
-    pts.userData.parts.forEach((p,i)=>{ p.life-=dt*0.7; p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt; p.vy+=0.03*dt;
+    pts.userData.parts.forEach((p,i)=>{ p.life-=dt*0.6; p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt; p.vy+=0.04*dt; p.vx*=0.99; p.vz*=0.99;
       if(p.life>0){ alive++; arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z; } else arr[i*3+1]=-999; });
-    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=Math.max(0, alive/120*0.85);
+    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=Math.max(0, alive/220*0.7);
     if(alive===0) pts.visible=false;
   }
-  _dust(pos){ if(!this._dustPts){ const n=40, g=new THREE.BufferGeometry(), a=new Float32Array(n*3); g.setAttribute('position',new THREE.BufferAttribute(a,3));
-      this._dustPts=new THREE.Points(g, new THREE.PointsMaterial({color:0xccc4b0, size:0.02, transparent:true, opacity:0.8, depthWrite:false})); this.scene.add(this._dustPts); this._dustArr=a; this._dustN=n; }
-    const a=this._dustArr; for(let i=0;i<this._dustN;i++){ a[i*3]=pos.x+(Math.random()-.5)*0.05; a[i*3+1]=pos.y+(Math.random())*0.05; a[i*3+2]=pos.z+(Math.random()-.5)*0.05; }
+  _dust(pos){ if(!this._dustPts){ const n=60, g=new THREE.BufferGeometry(), a=new Float32Array(n*3); g.setAttribute('position',new THREE.BufferAttribute(a,3));
+      this._dustPts=new THREE.Points(g, new THREE.PointsMaterial({color:0xccc4b0, size:0.014, map:softDot(), transparent:true, opacity:0.7, depthWrite:false, sizeAttenuation:true})); this.scene.add(this._dustPts); this._dustArr=a; this._dustN=n; }
+    const a=this._dustArr; for(let i=0;i<this._dustN;i++){ a[i*3]=pos.x+(Math.random()-.5)*0.06; a[i*3+1]=pos.y+(Math.random())*0.04; a[i*3+2]=pos.z+(Math.random()-.5)*0.06; }
     this._dustPts.geometry.attributes.position.needsUpdate=true; }
 
   update(dt){
@@ -206,6 +212,7 @@ export class LunarMission {
       case 'SPHERE': {
         this.rocket.position.copy(new THREE.Vector3(0,PARK,0)).add(new THREE.Vector3(Math.sin(Math.PI*k)*0.04,0,0));
         this._pointUp(this.rocket, new THREE.Vector3(1,0,0).multiplyScalar(ke).add(new THREE.Vector3(0,1,0).multiplyScalar(1-ke)).normalize());
+        this._fadeWenchang(Math.max(0, 1 - Math.min(this.pt/DUR.SPHERE,1)*1.1));   // 升空隐藏平地,只留球面
         break; }
       case 'STAGE_SEP': {
         this.rocket.position.copy(new THREE.Vector3(0,PARK,0)); this._pointUp(this.rocket, new THREE.Vector3(1,0,0));
@@ -273,10 +280,10 @@ export class LunarMission {
       case 'SPHERE': { const q=Math.min(this.pt/DUR.SPHERE,1); const rq=ease(Math.min(q/0.7,1)); pos.set(1.7, RE+0.25+rq*3.4, 2.1); tgt.set(0, RE*0.55, 0.4); up.set(0,1,0); break; }
       case 'STAGE_SEP': pos.set(0.9, 2.0, 1.3); tgt.copy(this.rocket.position); up.set(0,1,0); break;
       case 'EARTH_ORBIT': pos.set(0.6, 0.5, 0.7).add(this.change.position); tgt.copy(this.change.position); up.set(0,1,0); break;
-      case 'TRANSFER': { const d=this.change.position; pos.set(d.x*0.5, 3.0, d.x*0.6+1.0); tgt.copy(d); up.set(0,1,0); break; }
+      case 'TRANSFER': { const d=this.change.position; const k=Math.min(this.pt/DUR.TRANSFER,1), r=1.9-k*1.2; pos.copy(d).add(new THREE.Vector3(r*0.45, r*0.9, r*0.4)); tgt.copy(d); up.set(0,1,0); break; }
       case 'LOI': { const d=this._closeup?0.11:1.6; pos.copy(this.change.position).add(new THREE.Vector3(d*0.45, d*0.8, d*0.3)); tgt.copy(this.change.position); up.set(0,1,0); break; }
       case 'LUNAR_ORBIT': { const d=this._closeup?0.11:1.7; pos.copy(this.change.position).add(new THREE.Vector3(d*0.45, d*0.8, d*0.3)); tgt.copy(this.change.position); up.set(0,1,0); break; }
-      case 'LANDING': case 'LANDED': { const lp=lander.position; pos.copy(lp).add(new THREE.Vector3(-0.06,0,0.11)); tgt.copy(lp); up.set(-1,0,0); break; }
+      case 'LANDING': case 'LANDED': { const lp=lander.position; pos.copy(lp).add(new THREE.Vector3(-0.12,0.30,0.34)); tgt.copy(lp); up.set(-1,0,0); break; }
       default: pos.set(0,2.4,2.0); tgt.set(0,0,0); up.set(0,1,0);
     }
     return {pos,tgt,up};
