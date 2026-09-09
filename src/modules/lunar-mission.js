@@ -7,7 +7,7 @@ import { textureStore } from '../scene/texture-store.js';
 // —— 电影舞台比例（非 AU，自洽）——
 const RE=1.0, RM=0.27, MD=15.0, PARK=1.35, LUNAR_R=0.6, LUNAR_ORBITS=2;
 const ORDER=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
-const DUR={ COUNTDOWN:3.4, IGNITION:1.6, LIFTOFF:4.5, SPHERE:7.5, STAGE_SEP:2, EARTH_ORBIT:5, TRANSFER:11, LOI:5, LUNAR_ORBIT:9, LANDING:8 };
+const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:5.5, SPHERE:9, STAGE_SEP:2.2, EARTH_ORBIT:6, TRANSFER:18, LOI:5, LUNAR_ORBIT:8, LANDING:11 };
 const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'分级脱离', EARTH_ORBIT:'地球轨道', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
 
 function tex(cb){ const c=document.createElement('canvas'); c.width=128; c.height=64; cb(c.getContext('2d')); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
@@ -83,7 +83,7 @@ export class LunarMission {
     this.ctx=ctx; this.active=false; this.phase='IDLE'; this.pt=0; this._built=false; this._scene=null;
     this._saved={ rate:-1, running:true, moonMode:null, controlsOn:true, labelsOn:true };
     this._cam={ pos:new THREE.Vector3(), tgt:new THREE.Vector3(), up:new THREE.Vector3(0,1,0) };
-    this._closeup=true;
+    this._closeup=true; this._inMoon=false;
     this._site=new THREE.Vector3(0,RE,0);   // 发射点(+Y 极)，月球在 +X
   }
   get scene(){ if(!this._scene) this._scene=new THREE.Scene(); return this._scene; }
@@ -274,17 +274,37 @@ export class LunarMission {
   _camDesired(){
     const site=this._site, up=new THREE.Vector3(0,1,0), pos=new THREE.Vector3(), tgt=new THREE.Vector3();
     const lander=this.change && this.change.userData ? this.change.userData.lander : this.change;
+    const U=up;   // 统一地平线上方向 (+Y), 避免运镜翻滚
     switch(this.phase){
-      case 'COUNTDOWN': case 'IGNITION': pos.set(0.28, RE+0.035, 0.30); tgt.copy(site).add(new THREE.Vector3(0,0.085,0)); up.set(0,1,0); break;
-      case 'LIFTOFF': pos.set(0.34, RE+0.04, 0.36); tgt.copy(this.rocket.position); up.set(0,1,0); break;
-      case 'SPHERE': { const q=Math.min(this.pt/DUR.SPHERE,1); const rq=ease(Math.min(q/0.7,1)); pos.set(1.7, RE+0.25+rq*3.4, 2.1); tgt.set(0, RE*0.55, 0.4); up.set(0,1,0); break; }
-      case 'STAGE_SEP': pos.set(0.9, 2.0, 1.3); tgt.copy(this.rocket.position); up.set(0,1,0); break;
-      case 'EARTH_ORBIT': pos.set(0.6, 0.5, 0.7).add(this.change.position); tgt.copy(this.change.position); up.set(0,1,0); break;
-      case 'TRANSFER': { const d=this.change.position; const k=Math.min(this.pt/DUR.TRANSFER,1), r=1.9-k*1.2; pos.copy(d).add(new THREE.Vector3(r*0.45, r*0.9, r*0.4)); tgt.copy(d); up.set(0,1,0); break; }
-      case 'LOI': { const d=this._closeup?0.11:1.6; pos.copy(this.change.position).add(new THREE.Vector3(d*0.45, d*0.8, d*0.3)); tgt.copy(this.change.position); up.set(0,1,0); break; }
-      case 'LUNAR_ORBIT': { const d=this._closeup?0.11:1.7; pos.copy(this.change.position).add(new THREE.Vector3(d*0.45, d*0.8, d*0.3)); tgt.copy(this.change.position); up.set(0,1,0); break; }
-      case 'LANDING': case 'LANDED': { const lp=lander.position; pos.copy(lp).add(new THREE.Vector3(-0.12,0.30,0.34)); tgt.copy(lp); up.set(-1,0,0); break; }
-      default: pos.set(0,2.4,2.0); tgt.set(0,0,0); up.set(0,1,0);
+      case 'COUNTDOWN': case 'IGNITION': {
+        // 低角度英雄镜头：贴近火箭底座，仰视火箭，塔架压迫感
+        pos.set(0.10, RE+0.012, 0.10); tgt.copy(site).add(new THREE.Vector3(0,0.11,0)); U.set(0,1,0); break; }
+      case 'LIFTOFF': {
+        // 平视→仰视：相机留在台边，随火箭升高而抬升视线
+        pos.set(0.13, RE+0.015, 0.12); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
+      case 'SPHERE': {
+        // 敬畏段落：相机升高, 地面→球面; 后段(球面出现)停顿2~3秒
+        const q=Math.min(this.pt/DUR.SPHERE,1), rq=ease(Math.min(q/0.72,1));
+        const h=RE+0.25 + rq*4.2;
+        pos.set(1.9, h, 2.3); tgt.set(0, RE*0.5, 0.35); U.set(0,1,0); break; }
+      case 'STAGE_SEP': {
+        pos.set(0.9, 2.0, 1.3); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
+      case 'EARTH_ORBIT': {
+        pos.copy(this.change.position).add(new THREE.Vector3(1.1, 0.9, 1.5)); tgt.copy(this.change.position); U.set(0,1,0); break; }
+      case 'TRANSFER': {
+        // 长推近：开始广(带地球+月球+椭圆参照=空间线), 越近月球越逼近
+        const k=Math.min(this.pt/DUR.TRANSFER,1);
+        const r=3.4 - k*2.5;   // 广→近
+        pos.copy(this.change.position).add(new THREE.Vector3(-0.2*r, 0.72*r, 0.55*r)); tgt.copy(this.change.position); U.set(0,1,0); break; }
+      case 'LOI': {
+        pos.copy(this.change.position).add(new THREE.Vector3(0.5, 0.9, 0.5)); tgt.copy(this.change.position); U.set(0,1,0); break; }
+      case 'LUNAR_ORBIT': {
+        // 缓慢环绕：相机沿月球轨道外侧缓慢跟拍, 镜头有"意味"
+        pos.copy(this.change.position).add(new THREE.Vector3(0.6, 0.9, 0.7)); tgt.copy(this.change.position); U.set(0,1,0); break; }
+      case 'LANDING': case 'LANDED': {
+        // 慢镜高潮：相机在着陆器斜上方, 看到月面+下降+反推+扬尘
+        const lp=lander.position; pos.copy(lp).add(new THREE.Vector3(-0.15,0.45,0.5)); tgt.copy(lp); U.set(0,1,0); break; }
+      default: pos.set(0,2.4,2.0); tgt.set(0,0,0); U.set(0,1,0);
     }
     return {pos,tgt,up};
   }
@@ -298,11 +318,19 @@ export class LunarMission {
   _buildUi(){
     if(!document.getElementById('mission-hud')){
       const h=document.createElement('div'); h.id='mission-hud';
-      h.innerHTML=`<div style="position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:60;background:var(--panel-solid,#0c1224);border:1px solid rgba(255,180,84,.35);border-radius:12px;padding:10px 18px;color:#e8ecf5;font-size:15px;text-align:center;pointer-events:auto">
+      h.innerHTML=`<div style="position:fixed;left:50%;top:56px;transform:translateX(-50%);z-index:60;background:var(--panel-solid,#0c1224);border:1px solid rgba(255,180,84,.35);border-radius:12px;padding:10px 18px;color:#e8ecf5;font-size:15px;text-align:center;pointer-events:auto;min-width:280px">
         <div id="mission-phase" style="font-weight:600;color:#ffb454">🚀 发射倒计时</div>
-        <div id="mission-sub" style="font-size:12px;color:#9aa7bd;margin-top:3px">—</div>
-        <div id="mission-count" style="font-size:26px;font-weight:700;color:#ffd54a;margin-top:4px"></div>
-        <button id="mission-stop" style="margin-top:8px;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8ecf5;cursor:pointer">⏹ 停止任务</button>
+        <div id="mission-sub" style="font-size:12px;color:#9aa7bd;margin-top:3px;max-width:320px">—</div>
+        <div id="mission-count" style="font-size:26px;font-weight:700;color:#ffd54a;margin-top:2px"></div>
+        <div id="mission-prog-wrap" style="margin-top:7px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8fa0b8"><span>🌍 地球</span><span>🌕 月球</span></div>
+          <div style="position:relative;height:6px;background:rgba(255,255,255,.12);border-radius:3px;margin:2px 0">
+            <div id="mission-prog-fill" style="position:absolute;left:0;top:0;height:100%;width:0%;background:linear-gradient(90deg,#7fd0ff,#ffd54a);border-radius:3px"></div>
+            <div id="mission-prog-dot" style="position:absolute;top:-3px;left:0%;width:12px;height:12px;border-radius:50%;background:#ffb454;border:2px solid #fff;transform:translateX(-50%)"></div>
+          </div>
+          <div id="mission-dist" style="font-size:10px;color:#9aa7bd">—</div>
+        </div>
+        <button id="mission-stop" style="margin-top:6px;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8ecf5;cursor:pointer">⏹ 停止任务</button>
       </div>`;
       document.body.appendChild(h);
       document.getElementById('mission-stop').addEventListener('click',()=>this.cancel());
@@ -313,14 +341,30 @@ export class LunarMission {
   _updateHud(){
     const p=document.getElementById('mission-phase'), s=document.getElementById('mission-sub'); if(!p) return;
     p.textContent=PHASE_NAME[this.phase]||this.phase; let sub='';
-    if(this.phase==='COUNTDOWN'||this.phase==='IGNITION'||this.phase==='LIFTOFF'||this.phase==='SPHERE'){ sub='文昌航天发射场 · 海南文昌'; }
-    else if(this.phase==='TRANSFER'){ const k=Math.min(this.pt/DUR.TRANSFER,1); sub=`进入月球轨道 ${Math.round(k*100)}% · 距月球 ${(MD*(1-k)).toFixed(2)} 万公里`; }
-    else if(this.phase==='LUNAR_ORBIT'){ sub=`绕月第 ${Math.floor(Math.min(this.pt/DUR.LUNAR_ORBIT,1)*LUNAR_ORBITS)+1}/${LUNAR_ORBITS} 圈`; }
-    else if(this.phase==='LANDING'){ const k=Math.min(this.pt/DUR.LANDING,1); sub=`登月器下降 ${Math.round(k*100)}%`; }
-    else if(this.phase==='LANDED'){ sub='已在月球表面'; }
-    else if(this.phase==='EARTH_ORBIT'){ sub='地球停泊轨道'; }
+    const WHY={ COUNTDOWN:'一切就绪，等待点火', IGNITION:'火焰 + 导流槽水雾喷涌', LIFTOFF:'突破大气，逐渐摆脱地球引力',
+      SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'分级脱离：多级更省燃料', EARTH_ORBIT:'先绕地球一圈，获得入轨速度',
+      TRANSFER:'为什么不是直线飞？沿椭圆转移最省燃料', LOI:'为什么必须制动？不减速会飞过月球', LUNAR_ORBIT:'绕月探测，寻找落点',
+      LANDING:'反推减速 → 缓缓降落', LANDED:'已在月球表面' };
+    sub=WHY[this.phase]||'';
+    if(this.phase==='TRANSFER'){ const k=Math.min(this.pt/DUR.TRANSFER,1); sub+=`（转移 ${Math.round(k*100)}%）`; }
+    else if(this.phase==='LUNAR_ORBIT'){ sub+=`　绕月第 ${Math.floor(Math.min(this.pt/DUR.LUNAR_ORBIT,1)*LUNAR_ORBITS)+1}/${LUNAR_ORBITS} 圈`; }
+    else if(this.phase==='LANDING'){ const k=Math.min(this.pt/DUR.LANDING,1); sub+=`（下降 ${Math.round(k*100)}%）`; }
     if(this.phase!=='COUNTDOWN'&&this.phase!=='IGNITION'){ const c=document.getElementById('mission-count'); if(c) c.textContent=''; }
     s.textContent=sub;
+    this._updateProgress();
+  }
+  _updateProgress(){
+    // 空间进度条：嫦娥在地球—月球之间的位置（+ 距离）
+    const fill=document.getElementById('mission-prog-fill'), dot=document.getElementById('mission-prog-dot'), dist=document.getElementById('mission-dist');
+    if(!fill||!dot) return;
+    const ch=this.change, cx=ch?ch.position.x:0;
+    const frac=Math.max(0, Math.min(1, (cx+PARK)/(MD+PARK)));  // 从地球近处(-PARK)到月球(MD)
+    if(!this._inMoon){ if(this.phase==='LANDING'||this.phase==='LANDED'||this.phase==='LUNAR_ORBIT'||this.phase==='LOI') this._inMoon=true; }
+    const shown=this._inMoon?1:frac;
+    fill.style.width=Math.round(shown*100)+'%'; dot.style.left=Math.round(shown*100)+'%';
+    if(dist){ const dM=Math.max(0, MD-cx); const dE=Math.abs(cx);
+      if(this._inMoon) dist.textContent = (this.phase==='LANDING'||this.phase==='LANDED')?'已抵达月球 · 正在着陆':`已抵达月球 · 绕月飞行`;
+      else dist.textContent=`距月球 ${(dM*3.844).toFixed(1)} 万公里　距地球 ${(dE*3.844).toFixed(1)} 万公里`; }
   }
   _detachLander(){ const ch=this.change, lander=ch.userData.lander; const wp=lander.getWorldPosition(new THREE.Vector3()); ch.remove(lander); this.scene.add(lander); lander.position.copy(wp); ch.remove(this.plumeC); lander.add(this.plumeC); this._landerStart=wp.clone(); }
   _showSuccess(){
