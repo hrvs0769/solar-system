@@ -243,8 +243,8 @@ export class LunarMission {
         this.plumeR.userData.cone.scale.setScalar(1+0.4*Math.sin(this.pt*30));
         this._updateSteam(dt); this._syncBoosters(); break; }
       case 'LIFTOFF': {
-        // 先垂直飞起来：全程朝上, 不倾斜
-        const p0=this._site.clone().add(new THREE.Vector3(0,0.006,0));
+        // 先垂直飞起来：从点火结束处继续(不回到台上), 全程朝上, 不倾斜
+        const p0=this._site.clone().add(new THREE.Vector3(0,0.076,0));
         const p1=new THREE.Vector3(0,PARK+0.28,0);
         this.rocket.position.copy(p0).lerp(p1, ke);
         this._pointUp(this.rocket, up.clone());
@@ -252,7 +252,7 @@ export class LunarMission {
       case 'SPHERE': {
         // 继续垂直(相机升高揭示球面), 快到末段才轻微开始向下转
         const top=new THREE.Vector3(0,PARK+0.28,0);
-        this.rocket.position.copy(top).sub(new THREE.Vector3(0, ke*0.12, 0));
+        this.rocket.position.copy(top).sub(new THREE.Vector3(0, ke*0.28, 0));   // 末段回到停泊轨道高度(衔接连续)
         this._pointUp(this.rocket, up.clone().lerp(new THREE.Vector3(1,0,0), Math.max(0,k-0.55)*0.7));
         this.plumeR.userData.cone.scale.setScalar(1.0+0.3*Math.sin(this.pt*24));
         this._fadeWenchang(Math.max(0, 1 - Math.min(this.pt/DUR.SPHERE,1)*1.1));   // 升空隐藏平地,只留球面
