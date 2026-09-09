@@ -7,7 +7,7 @@ import { textureStore } from '../scene/texture-store.js';
 // —— 电影舞台比例（非 AU，自洽）——
 const RE=1.0, RM=0.27, MD=15.0, PARK=1.35, LUNAR_R=0.6, LUNAR_ORBITS=2;
 const ORDER=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
-const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:5.5, SPHERE:9, STAGE_SEP:2.2, EARTH_ORBIT:9, TRANSFER:18, LOI:3, LUNAR_ORBIT:8, LANDING:11 };
+const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:6.5, SPHERE:9, STAGE_SEP:4, EARTH_ORBIT:9, TRANSFER:18, LOI:3, LUNAR_ORBIT:8, LANDING:11 };
 const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'分级脱离', EARTH_ORBIT:'地球轨道', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
 
 function tex(cb){ const c=document.createElement('canvas'); c.width=128; c.height=64; cb(c.getContext('2d')); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
@@ -83,11 +83,12 @@ function buildChange(){
   return g;
 }
 function buildPlume(){ const g=new THREE.Group();
-  const outer=new THREE.Mesh(new THREE.ConeGeometry(0.014,0.07,16), new THREE.MeshBasicMaterial({color:0xff7d1e, transparent:true, opacity:0.75, blending:THREE.AdditiveBlending, depthWrite:false})); outer.rotation.x=Math.PI; outer.position.y=-0.045; g.add(outer);
-  const inner=new THREE.Mesh(new THREE.ConeGeometry(0.007,0.06,16), new THREE.MeshBasicMaterial({color:0xfff7c8, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false})); inner.rotation.x=Math.PI; inner.position.y=-0.042; g.add(inner);
-  const base=new THREE.Mesh(new THREE.ConeGeometry(0.005,0.02,12), new THREE.MeshBasicMaterial({color:0x8fc6ff, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false})); base.rotation.x=Math.PI; base.position.y=-0.014; g.add(base);
-  g.userData.cone=outer; g.visible=false; return g; }
-function buildSteam(){ const N=220, geo=new THREE.BufferGeometry(), arr=new Float32Array(N*3); geo.setAttribute('position',new THREE.BufferAttribute(arr,3)); const mat=new THREE.PointsMaterial({color:0xe6eef6, size:0.014, map:softDot(), transparent:true, opacity:0, depthWrite:false, sizeAttenuation:true}); const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[]}; return pts; }
+  const o=new THREE.Mesh(new THREE.ConeGeometry(0.021,0.075,18), new THREE.MeshBasicMaterial({color:0xff9a3c, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false}));
+  o.rotation.x=Math.PI; o.position.y=-0.038; g.add(o);
+  const i=new THREE.Mesh(new THREE.ConeGeometry(0.010,0.062,18), new THREE.MeshBasicMaterial({color:0xfff6d0, transparent:true, opacity:1.0, blending:THREE.AdditiveBlending, depthWrite:false}));
+  i.rotation.x=Math.PI; i.position.y=-0.034; g.add(i);
+  g.userData.cone=o; g.visible=false; return g; }
+function buildSteam(){ const N=220, geo=new THREE.BufferGeometry(), arr=new Float32Array(N*3); geo.setAttribute('position',new THREE.BufferAttribute(arr,3)); const mat=new THREE.PointsMaterial({color:0xeef3f8, size:0.026, map:softDot(), transparent:true, opacity:0, depthWrite:false, sizeAttenuation:true}); const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[]}; return pts; }
 
 export class LunarMission {
   constructor(ctx){
@@ -131,11 +132,18 @@ export class LunarMission {
       side:THREE.BackSide, transparent:true, depthWrite:false });
     const sky=new THREE.Mesh(new THREE.SphereGeometry(60,32,16), this.skyMat); sky.name='sky'; sc.add(sky);
     const earth=new THREE.Mesh(new THREE.SphereGeometry(RE, 72, 72), new THREE.MeshStandardMaterial({color:0x2f6fb0, roughness:.7})); earth.name='earth'; sc.add(earth);
-    this._loadTex('earth_daymap', t=>{ if(t&&earth.material){ earth.material.map=t; earth.material.needsUpdate=true; } });
+    this._loadTex('earth', t=>{ if(t&&earth.material){ earth.material.map=t; earth.material.needsUpdate=true; } });
     const moon=new THREE.Mesh(new THREE.SphereGeometry(RM, 56, 56), new THREE.MeshStandardMaterial({color:0xb8b8b8, roughness:.9})); moon.name='moon'; moon.position.set(MD,0,0); sc.add(moon);
     this._loadTex('moon', t=>{ if(t&&moon.material){ moon.material.map=t; moon.material.needsUpdate=true; } });
     this.wenchang=buildWenchang(); this.wenchang.position.copy(this._site); sc.add(this.wenchang);
-    const stars=new THREE.Points(new THREE.BufferGeometry().setFromPoints(this._stars(700).map(p=>new THREE.Vector3().fromArray(p))), new THREE.PointsMaterial({color:0xffffff, size:0.06, sizeAttenuation:false})); sc.add(stars);
+    { const n=900, pos=new Float32Array(n*3), ph=new Float32Array(n);
+      for(let i=0;i<n;i++){ pos[i*3]=(Math.random()-.5)*80; pos[i*3+1]=(Math.random()-.5)*80; pos[i*3+2]=(Math.random()-.5)*80; ph[i]=Math.random()*6.283; }
+      const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.BufferAttribute(pos,3)); sg.setAttribute('aPhase',new THREE.BufferAttribute(ph,1));
+      const sm=new THREE.ShaderMaterial({ uniforms:{ uT:{value:0} },
+        vertexShader:`attribute float aPhase; uniform float uT; varying float vB; void main(){ vB=0.5+0.5*sin(uT*2.2+aPhase); vec4 mv=modelViewMatrix*vec4(position,1.0); gl_PointSize=2.2; gl_Position=projectionMatrix*mv; }`,
+        fragmentShader:`varying float vB; void main(){ gl_FragColor=vec4(vec3(0.85+0.15*vB)*vB, 1.0); }`, transparent:true, depthWrite:false });
+      const stars=new THREE.Points(sg, sm); stars.onBeforeRender=()=>{ sm.uniforms.uT.value=performance.now()/1000; }; sc.add(stars);
+    }
     this.rocket=buildRocket(); this.boosters=buildBoosters(); this.change=buildChange(); this.plumeR=buildPlume(); this.plumeC=buildPlume(); this.steam=buildSteam();
     this.rocket.add(this.plumeR); this.change.add(this.plumeC); this.plumeC.scale.setScalar(3.2);
     [this.rocket,this.boosters,this.change,this.steam].forEach(o=>{ this.scene.add(o); });
@@ -183,7 +191,11 @@ export class LunarMission {
     if(p==='LIFTOFF'){ this.plumeR.visible=true; }
     if(p==='SPHERE'){ this.plumeR.visible=true; }
     if(p==='STAGE_SEP'){ this.plumeR.visible=false; this.stageSepT=0; if(this.boosters) this.boosters.userData.sep={t:0}; }
-    if(p==='EARTH_ORBIT'){ this.change.visible=false; this.rocket.visible=true; if(this.boosters) this.boosters.visible=false; this.linePark.visible=true; }
+    if(p==='EARTH_ORBIT'){ this.change.visible=false; this.rocket.visible=true; if(this.boosters) this.boosters.visible=false; this.linePark.visible=true;
+      // 绕地球时开放用户手动视角(拖动/捏合绕火箭观察)
+      const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls;
+      if(c){ this._saveMinMax={min:c.minDistance,max:c.maxDistance}; c.minDistance=0.5; c.maxDistance=6; c.target.copy(this.rocket.position); this.ctx.camera.position.copy(this.rocket.position).add(new THREE.Vector3(1.1,0.9,1.5)); c.enabled=true; this._freeCam=true; } }
+    if(p==='TRANSFER'){ if(this._freeCam){ const c=this.ctx.cameraRig.controls; if(c){ c.enabled=false; if(this._saveMinMax){ c.minDistance=this._saveMinMax.min; c.maxDistance=this._saveMinMax.max; } } this._freeCam=false; } }
     if(p==='TRANSFER'){ this.change.visible=true; this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; this._transSepT=0; }
     if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); if(this.speedArrows) this.speedArrows.visible=false; }
     if(p==='LUNAR_ORBIT'){ this.plumeC.visible=false; this._lam=0; this._reveal(this.lineLunar,0); this.lineTransfer.visible=false; }
@@ -225,7 +237,11 @@ export class LunarMission {
     const site=this._site, up=new THREE.Vector3(0,1,0);
     switch(this.phase){
       case 'COUNTDOWN': this._setCountdown(); this._syncBoosters(); break;
-      case 'IGNITION': this.plumeR.userData.cone.scale.setScalar(1+0.4*Math.sin(this.pt*30)); this._updateSteam(dt); this._syncBoosters(); break;
+      case 'IGNITION': {
+        this.rocket.position.copy(this._site).add(new THREE.Vector3(0, 0.006 + ke*0.07, 0));   // 点火即微微离地, 露出尾焰
+        this._pointUp(this.rocket, up.clone());
+        this.plumeR.userData.cone.scale.setScalar(1+0.4*Math.sin(this.pt*30));
+        this._updateSteam(dt); this._syncBoosters(); break; }
       case 'LIFTOFF': {
         // 先垂直飞起来：全程朝上, 不倾斜
         const p0=this._site.clone().add(new THREE.Vector3(0,0.006,0));
@@ -246,10 +262,11 @@ export class LunarMission {
         // 助推器分离：向后下翻滚坠落淡出
         const sep=this.boosters&&this.boosters.userData?this.boosters.userData.sep:null;
         if(sep){ sep.t+=dt; const r=this.rocket.position;
-          this.boosters.position.copy(r).add(new THREE.Vector3(-sep.t*0.03, -sep.t*0.06, 0));
-          this.boosters.rotation.z=sep.t*1.6; this.boosters.rotation.x=sep.t*0.8;
-          this.boosters.children.forEach(c=>{ if(c.material){ c.material=c.material.clone(); c.material.transparent=true; c.material.opacity=Math.max(0,1-sep.t*0.9); } });
-          if(sep.t>1.2) this.boosters.visible=false;
+          this.boosters.position.copy(r).add(new THREE.Vector3(-sep.t*0.10, -sep.t*0.15, sep.t*0.03));
+          this.boosters.rotation.z=sep.t*2.2; this.boosters.rotation.x=sep.t*1.1;
+          const f=Math.max(0, 1-Math.max(0,sep.t-1.8)*1.0);
+          this.boosters.children.forEach(c=>{ if(c.material){ c.material=c.material.clone(); c.material.transparent=true; c.material.opacity=f; } });
+          if(f<=0) this.boosters.visible=false;
         }
         break; }
       case 'EARTH_ORBIT': {
@@ -261,13 +278,13 @@ export class LunarMission {
         this._reveal(this.linePark, k);
         break; }
       case 'TRANSFER': {
-        // TLI 点(-X): 上面级分离, 嫦娥卫星出舱, 沿转移椭圆(凸-Y)飞向月球停泊轨近侧
+        // TLI 点(-X): 上面级分离, 嫦娥卫星缓缓出舱, 火箭落后淡出, 再沿转移椭圆奔月
         if(this._transSepT===undefined) this._transSepT=0;
         this._transSepT+=dt;
-        const f=Math.max(0, 1-this._transSepT/1.4);   // 火箭(上面级)分离淡出
+        const f=Math.max(0, 1-this._transSepT/2.6);   // 火箭(上面级)缓缓淡出
         this.rocket.children.forEach(c=>{ if(c.material){ c.material.transparent=true; c.material.opacity=f; } });
         if(f<=0) this.rocket.visible=false;
-        this.rocket.position.copy(this._park(Math.PI));
+        this.rocket.position.copy(this._park(Math.PI)).add(new THREE.Vector3(-this._transSepT*0.06, -this._transSepT*0.02, 0));  // 火箭缓缓落后
         const nu=Math.PI*ke;
         this.change.position.copy(this._transfer(nu));
         const nuP=Math.max(nu-0.02,0.001);
@@ -276,21 +293,24 @@ export class LunarMission {
         this._reveal(this.lineTransfer, k);
         break; }
       case 'LOI': {
-        // 到达月球停泊轨近侧: 反向制动(被月球"抓住"), 不重复转移运动
-        this.change.position.copy(this._lunar(Math.PI));
-        this._pointUp(this.change, this._tangentLunar(Math.PI));
+        // 到达月球停泊轨近侧: 反向制动被月球"抓住", 并沿轨道缓缓滑入(不静止)
+        this._lam=Math.PI + ease(k)*0.9;
+        this.change.position.copy(this._lunar(this._lam));
+        this._pointUp(this.change, this._tangentLunar(this._lam));
         this.plumeC.userData.cone.scale.setScalar(1+0.3*Math.sin(this.pt*25));
         break; }
       case 'LUNAR_ORBIT': {
-        this._lam=Math.PI + k*Math.PI*2*LUNAR_ORBITS; this.change.position.copy(this._lunar(this._lam));
+        this._lam=Math.PI + 0.9 + k*Math.PI*2*LUNAR_ORBITS; this.change.position.copy(this._lunar(this._lam));
         this._pointUp(this.change, this._tangentLunar(this._lam));
         this._reveal(this.lineLunar, k);
         break; }
       case 'LANDING': {
         this._lam+=dt*0.5; this.change.position.copy(this._lunar(this._lam));
         this._pointUp(this.change, this._tangentLunar(this._lam));
-        const lander=this.change.userData.lander, to=new THREE.Vector3(MD-RM-0.045,0,0);   // 落点=月面+腿高, 腿不扎进月面
-        lander.position.copy(this._landerStart).lerp(to, ke);
+        const lander=this.change.userData.lander, to=new THREE.Vector3(MD-RM-0.045,0,0);   // 落点=月面+腿高
+        const dirDown=to.clone().sub(this._landerStart).normalize();
+        const sepPos=this._landerStart.clone().addScaledVector(dirDown, ease(Math.min(this.pt/1.6,1))*0.09);  // 先与轨道器缓缓分离
+        lander.position.copy(sepPos).lerp(to, ke);
         this._pointUp(lander, to.clone().sub(new THREE.Vector3(MD,0,0)).normalize());
         if(this.pt%0.08<dt) this._dust(lander.position);
         this.plumeC.userData.cone.scale.setScalar(0.8+0.3*Math.sin(this.pt*20)); break; }
@@ -317,11 +337,11 @@ export class LunarMission {
     const U=up;   // 统一地平线上方向 (+Y), 避免运镜翻滚
     switch(this.phase){
       case 'COUNTDOWN': case 'IGNITION': {
-        // 低角度英雄镜头（换个没有建筑的机位）：从 -Z 侧仰视火箭+塔架
-        pos.set(-0.05, RE+0.02, -0.15); tgt.copy(site).add(new THREE.Vector3(0,0.10,0)); U.set(0,1,0); break; }
+        // 低角度英雄镜头(拉远看全火箭): 从 -Z 侧仰视火箭+塔架
+        pos.set(-0.12, RE+0.05, -0.34); tgt.copy(site).add(new THREE.Vector3(0,0.08,0)); U.set(0,1,0); break; }
       case 'LIFTOFF': {
         // 平视→仰视：相机留台边，随火箭升高而抬升视线
-        pos.set(-0.05, RE+0.02, -0.17); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
+        pos.set(-0.12, RE+0.05, -0.36); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
       case 'SPHERE': {
         // 敬畏段落：相机升高, 地面→球面; 后段(球面出现)停顿2~3秒
         const q=Math.min(this.pt/DUR.SPHERE,1), rq=ease(Math.min(q/0.72,1));
@@ -350,7 +370,9 @@ export class LunarMission {
     return {pos,tgt,up};
   }
   _updateCamera(dt){
-    const d=this._camDesired(), cam=this.ctx.camera, s=Math.min(1, dt*5);
+    const cam=this.ctx.camera;
+    if(this._freeCam){ const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls; if(c){ c.target.copy(this.rocket.position); c.update(); } return; }   // 用户手动视角
+    const d=this._camDesired(), s=Math.min(1, dt*5);
     this._cam.pos.lerp(d.pos,s); this._cam.tgt.lerp(d.tgt,s); this._cam.up.lerp(d.up,s);
     cam.position.copy(this._cam.pos); cam.up.copy(this._cam.up).normalize(); cam.lookAt(this._cam.tgt);
   }
@@ -430,7 +452,8 @@ export class LunarMission {
     ctx.clock.running=this._saved.running;
     if(this._saved.labelsOn&&ctx.orbitView&&!ctx.orbitView.labelsVisible) ctx.orbitView.toggleLabels();
     if(ctx.labelRenderer) ctx.labelRenderer.domElement.style.display=this._labelDisp==='none'?'none':'';
-    if(ctx.cameraRig&&ctx.cameraRig.controls) ctx.cameraRig.controls.enabled=this._saved.controlsOn!==false;
+    if(ctx.cameraRig&&ctx.cameraRig.controls){ ctx.cameraRig.controls.enabled=this._saved.controlsOn!==false; if(this._saveMinMax){ ctx.cameraRig.controls.minDistance=this._saveMinMax.min; ctx.cameraRig.controls.maxDistance=this._saveMinMax.max; } }
+    this._freeCam=false;
     ctx.camera.up.set(0,1,0);
     if(wasActive&&ctx.cameraRig&&ctx.cameraRig.reset) ctx.cameraRig.reset();
     if(this._scene){ this._scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); }); } }); this._scene=null; }
