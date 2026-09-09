@@ -118,7 +118,8 @@ export class LunarMission {
   _buildScene(){
     const sc=this.scene;
     sc.add(new THREE.AmbientLight(0x557, 0.9));
-    const sun=new THREE.PointLight(0xffffff, 3.2, 0, 0); sun.position.set(30,22,12); sc.add(sun);
+    const sun=new THREE.PointLight(0xffffff, 3.2, 0, 0); sun.position.set(-5,18,-9); sc.add(sun);   // 太阳在发射场相机一侧, 避免逆光
+    this.launchFill=new THREE.PointLight(0xffffff, 2.6, 10, 2); this.launchFill.position.set(-0.6,2.2,-1.6); sc.add(this.launchFill);
     this.landLight=new THREE.PointLight(0xffe6c0, 0, 8, 2); this.landLight.position.set(MD-RM*0.4, 1.5, 3); sc.add(this.landLight);
     this.moonFill=new THREE.PointLight(0xf0e6d6, 2.4, 10, 2); this.moonFill.position.set(MD-4, 1.5, 1); sc.add(this.moonFill);
     // 白天蓝天球（地面发射时为蓝天, 升空进太空后淡出为黑暗）
@@ -180,7 +181,7 @@ export class LunarMission {
       this._hideLines(); }
     if(p==='IGNITION'){ this.plumeR.visible=true; this.steam.visible=true; this._spawnSteam(); }
     if(p==='LIFTOFF'){ this.plumeR.visible=true; }
-    if(p==='SPHERE'){ this.plumeR.visible=false; }
+    if(p==='SPHERE'){ this.plumeR.visible=true; }
     if(p==='STAGE_SEP'){ this.plumeR.visible=false; this.stageSepT=0; if(this.boosters) this.boosters.userData.sep={t:0}; }
     if(p==='EARTH_ORBIT'){ this.change.visible=false; this.rocket.visible=true; if(this.boosters) this.boosters.visible=false; this.linePark.visible=true; }
     if(p==='TRANSFER'){ this.change.visible=true; this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; this._transSepT=0; }
@@ -195,21 +196,20 @@ export class LunarMission {
 
   _pointUp(obj,dir){ if(!obj||!dir||dir.lengthSq()<1e-10) return; obj.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize()); }
   _spawnSteam(){
-    const pts=this.steam, N=220, arr=pts.geometry.attributes.position.array;
+    const pts=this.steam, N=320, arr=pts.geometry.attributes.position.array;
     pts.userData.parts=[];
-    for(let i=0;i<N;i++){ const a=Math.random()*Math.PI*2, r=0.015+Math.random()*0.04;
-      const x=this._site.x+Math.cos(a)*r, y=RE+0.005, z=this._site.z+Math.sin(a)*r;
-      pts.userData.parts.push({x,y,z,vx:Math.cos(a)*0.05, vy:0.02+Math.random()*0.05, vz:Math.sin(a)*0.05, life:1, s:0.6+Math.random()*0.6}); }
-    arr.forEach((v,i)=>{ /* 先填满 */ });
+    for(let i=0;i<N;i++){ const a=Math.random()*Math.PI*2, r=0.01+Math.random()*0.06;
+      const x=this._site.x+Math.cos(a)*r, y=RE+0.003+Math.random()*0.02, z=this._site.z+Math.sin(a)*r;
+      pts.userData.parts.push({x,y,z,vx:Math.cos(a)*(0.04+Math.random()*0.06), vy:0.015+Math.random()*0.05, vz:Math.sin(a)*(0.04+Math.random()*0.06), life:1, s:0.7+Math.random()*0.8}); }
     pts.userData.parts.forEach((p,i)=>{ arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z; });
-    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=0.7;
+    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=0.85;
   }
   _updateSteam(dt){
     const pts=this.steam, arr=pts.geometry.attributes.position.array;
     if(!pts.visible) return; let alive=0;
-    pts.userData.parts.forEach((p,i)=>{ p.life-=dt*0.6; p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt; p.vy+=0.04*dt; p.vx*=0.99; p.vz*=0.99;
+    pts.userData.parts.forEach((p,i)=>{ p.life-=dt*0.5; p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt; p.vy+=0.05*dt; p.vx*=0.985; p.vz*=0.985;
       if(p.life>0){ alive++; arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z; } else arr[i*3+1]=-999; });
-    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=Math.max(0, alive/220*0.7);
+    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=Math.max(0, alive/320*0.85);
     if(alive===0) pts.visible=false;
   }
   _dust(pos){ if(!this._dustPts){ const n=60, g=new THREE.BufferGeometry(), a=new Float32Array(n*3); g.setAttribute('position',new THREE.BufferAttribute(a,3));
@@ -227,18 +227,22 @@ export class LunarMission {
       case 'COUNTDOWN': this._setCountdown(); this._syncBoosters(); break;
       case 'IGNITION': this.plumeR.userData.cone.scale.setScalar(1+0.4*Math.sin(this.pt*30)); this._updateSteam(dt); this._syncBoosters(); break;
       case 'LIFTOFF': {
+        // 先垂直飞起来：全程朝上, 不倾斜
         const p0=this._site.clone().add(new THREE.Vector3(0,0.006,0));
-        const p1=new THREE.Vector3(0,PARK,0);
-        this.rocket.position.copy(p0).lerp(p1, ke).add(new THREE.Vector3(Math.sin(Math.PI*k)*0.04,0,0));
-        this._pointUp(this.rocket, up.clone().lerp(new THREE.Vector3(1,0,0),0.5*ke));
-        this.plumeR.userData.cone.scale.setScalar(0.8+0.3*Math.sin(this.pt*25)); this._syncBoosters(); break; }
+        const p1=new THREE.Vector3(0,PARK+0.28,0);
+        this.rocket.position.copy(p0).lerp(p1, ke);
+        this._pointUp(this.rocket, up.clone());
+        this.plumeR.userData.cone.scale.setScalar(1.1+0.35*Math.sin(this.pt*25)); this._syncBoosters(); break; }
       case 'SPHERE': {
-        this.rocket.position.copy(new THREE.Vector3(0,PARK,0)).add(new THREE.Vector3(Math.sin(Math.PI*k)*0.04,0,0));
-        this._pointUp(this.rocket, new THREE.Vector3(1,0,0).multiplyScalar(ke).add(new THREE.Vector3(0,1,0).multiplyScalar(1-ke)).normalize());
+        // 继续垂直(相机升高揭示球面), 快到末段才轻微开始向下转
+        const top=new THREE.Vector3(0,PARK+0.28,0);
+        this.rocket.position.copy(top).sub(new THREE.Vector3(0, ke*0.12, 0));
+        this._pointUp(this.rocket, up.clone().lerp(new THREE.Vector3(1,0,0), Math.max(0,k-0.55)*0.7));
+        this.plumeR.userData.cone.scale.setScalar(1.0+0.3*Math.sin(this.pt*24));
         this._fadeWenchang(Math.max(0, 1 - Math.min(this.pt/DUR.SPHERE,1)*1.1));   // 升空隐藏平地,只留球面
         this._syncBoosters(); break; }
       case 'STAGE_SEP': {
-        this.rocket.position.copy(new THREE.Vector3(0,PARK,0)); this._pointUp(this.rocket, new THREE.Vector3(1,0,0));
+        this.rocket.position.copy(new THREE.Vector3(0,PARK,0)); this._pointUp(this.rocket, new THREE.Vector3(0.3,1,0).normalize());
         // 助推器分离：向后下翻滚坠落淡出
         const sep=this.boosters&&this.boosters.userData?this.boosters.userData.sep:null;
         if(sep){ sep.t+=dt; const r=this.rocket.position;
@@ -249,10 +253,11 @@ export class LunarMission {
         }
         break; }
       case 'EARTH_ORBIT': {
-        // 火箭(含整流罩/嫦娥)绕地球一圈多(450°), 到 TLI 点(-X); 方向与转移一致
+        // 入轨转弯(前段从竖直逐步转向轨道切线) + 绕地球到 TLI 点
         const th=Math.PI/2 + k*(Math.PI/2 + Math.PI*2);
         this.rocket.position.copy(this._park(th));
-        this._pointUp(this.rocket, this._tangentPark(th));
+        const turn=Math.min(k/0.16,1);
+        this._pointUp(this.rocket, new THREE.Vector3(0,1,0).lerp(this._tangentPark(th), turn));
         this._reveal(this.linePark, k);
         break; }
       case 'TRANSFER': {
@@ -354,19 +359,19 @@ export class LunarMission {
   _buildUi(){
     if(!document.getElementById('mission-hud')){
       const h=document.createElement('div'); h.id='mission-hud';
-      h.innerHTML=`<div style="position:fixed;left:50%;top:56px;transform:translateX(-50%);z-index:60;background:var(--panel-solid,#0c1224);border:1px solid rgba(255,180,84,.35);border-radius:12px;padding:10px 18px;color:#e8ecf5;font-size:15px;text-align:center;pointer-events:auto;min-width:280px">
+      h.innerHTML=`<div style="position:fixed;left:12px;top:56px;z-index:60;background:var(--panel-solid,#0c1224);border:1px solid rgba(255,180,84,.35);border-radius:12px;padding:9px 14px;color:#e8ecf5;font-size:13px;text-align:left;pointer-events:auto;min-width:210px">
         <div id="mission-phase" style="font-weight:600;color:#ffb454">🚀 发射倒计时</div>
-        <div id="mission-sub" style="font-size:12px;color:#9aa7bd;margin-top:3px;max-width:320px">—</div>
-        <div id="mission-count" style="font-size:26px;font-weight:700;color:#ffd54a;margin-top:2px"></div>
-        <div id="mission-prog-wrap" style="margin-top:7px">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8fa0b8"><span>🌍 地球</span><span>🌕 月球</span></div>
+        <div id="mission-sub" style="font-size:11px;color:#9aa7bd;margin-top:3px;max-width:230px">—</div>
+        <div id="mission-count" style="font-size:22px;font-weight:700;color:#ffd54a;margin-top:1px"></div>
+        <div id="mission-prog-wrap" style="margin-top:6px">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#8fa0b8"><span>🌍 地球</span><span>🌕 月球</span></div>
           <div style="position:relative;height:6px;background:rgba(255,255,255,.12);border-radius:3px;margin:2px 0">
             <div id="mission-prog-fill" style="position:absolute;left:0;top:0;height:100%;width:0%;background:linear-gradient(90deg,#7fd0ff,#ffd54a);border-radius:3px"></div>
             <div id="mission-prog-dot" style="position:absolute;top:-3px;left:0%;width:12px;height:12px;border-radius:50%;background:#ffb454;border:2px solid #fff;transform:translateX(-50%)"></div>
           </div>
           <div id="mission-dist" style="font-size:10px;color:#9aa7bd">—</div>
         </div>
-        <button id="mission-stop" style="margin-top:6px;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8ecf5;cursor:pointer">⏹ 停止任务</button>
+        <button id="mission-stop" style="margin-top:5px;padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8ecf5;cursor:pointer">⏹ 停止任务</button>
       </div>`;
       document.body.appendChild(h);
       document.getElementById('mission-stop').addEventListener('click',()=>this.cancel());
