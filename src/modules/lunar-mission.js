@@ -83,10 +83,9 @@ function buildChange(){
   return g;
 }
 function buildPlume(){ const g=new THREE.Group();
-  const o=new THREE.Mesh(new THREE.ConeGeometry(0.021,0.075,18), new THREE.MeshBasicMaterial({color:0xff9a3c, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false}));
-  o.rotation.x=Math.PI; o.position.y=-0.038; g.add(o);
-  const i=new THREE.Mesh(new THREE.ConeGeometry(0.010,0.062,18), new THREE.MeshBasicMaterial({color:0xfff6d0, transparent:true, opacity:1.0, blending:THREE.AdditiveBlending, depthWrite:false}));
-  i.rotation.x=Math.PI; i.position.y=-0.034; g.add(i);
+  const mat=(color,op)=>new THREE.MeshBasicMaterial({color, transparent:true, opacity:op, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
+  const o=new THREE.Mesh(new THREE.ConeGeometry(0.022,0.082,20,1,true), mat(0xff8a2a,0.8)); o.rotation.x=Math.PI; o.position.y=-0.041; g.add(o);
+  const i=new THREE.Mesh(new THREE.ConeGeometry(0.011,0.072,20,1,true), mat(0xfff4c0,0.95)); i.rotation.x=Math.PI; i.position.y=-0.038; g.add(i);
   g.userData.cone=o; g.visible=false; return g; }
 function buildSteam(){ const N=220, geo=new THREE.BufferGeometry(), arr=new Float32Array(N*3); geo.setAttribute('position',new THREE.BufferAttribute(arr,3)); const mat=new THREE.PointsMaterial({color:0xeef3f8, size:0.026, map:softDot(), transparent:true, opacity:0, depthWrite:false, sizeAttenuation:true}); const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[]}; return pts; }
 
