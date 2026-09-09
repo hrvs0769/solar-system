@@ -19,25 +19,39 @@ function solarTex(){ return tex(g=>{ g.fillStyle='#06132e'; g.fillRect(0,0,128,6
 // —— 文昌微缩城 ——
 function buildWenchang(){
   const g=new THREE.Group();
-  const groundMat=new THREE.MeshStandardMaterial({color:0x7a6f52, roughness:.95});
-  const roadMat=new THREE.MeshBasicMaterial({color:0x464c55});
-  const bldMat=new THREE.MeshStandardMaterial({color:0xcfd4da, metalness:.3, roughness:.6});
+  const groundMat=new THREE.MeshStandardMaterial({color:0x6f6a5a, roughness:.95});
+  const concreteMat=new THREE.MeshStandardMaterial({color:0x9aa0a8, roughness:.9});
+  const roadMat=new THREE.MeshBasicMaterial({color:0x3c414a});
+  const bldMat=new THREE.MeshStandardMaterial({color:0xd6dade, metalness:.25, roughness:.6});
   const steelMat=new THREE.MeshStandardMaterial({color:0x9aa2ae, metalness:.7, roughness:.5});
   const seaMat=new THREE.MeshStandardMaterial({color:0x2a6fa8, roughness:.4, metalness:.1});
   const ground=new THREE.Mesh(new THREE.CircleGeometry(0.15,40), groundMat); ground.rotation.x=-Math.PI/2; g.add(ground);
   const sea=new THREE.Mesh(new THREE.CircleGeometry(0.05,40), seaMat); sea.rotation.x=-Math.PI/2; sea.position.set(0.17,-0.004,0); g.add(sea);
+  // 混凝土发射坪(火箭/塔架处) + 发射台
+  const apron=new THREE.Mesh(new THREE.CircleGeometry(0.045,40), concreteMat); apron.rotation.x=-Math.PI/2; apron.position.y=0.003; g.add(apron);
   for(let i=-2;i<=2;i++){ const r=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.0015,0.006), roadMat); r.position.set(0,0.002,i*0.05); g.add(r);
     const r2=new THREE.Mesh(new THREE.BoxGeometry(0.006,0.0015,0.42), roadMat); r2.position.set(i*0.05,0.002,0); g.add(r2); }
-  const pad=new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.02,0.008,20), steelMat); g.add(pad);
-  const tower=new THREE.Group(); const TH=0.10;
+  const pad=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.019,0.01,20), steelMat); g.add(pad);
+  const tower=new THREE.Group(); const TH=0.11;
   [[-0.012,-0.008],[0.012,-0.008],[-0.012,0.008],[0.012,0.008]].forEach(([x,z])=>{ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.0018,0.0018,TH,8), steelMat); leg.position.set(x,TH/2,z); tower.add(leg); });
-  for(let i=1;i<7;i++){ const y=i/6*TH;
+  for(let i=1;i<8;i++){ const y=i/7*TH;
     const bx=new THREE.Mesh(new THREE.BoxGeometry(0.026,0.0018,0.0018), steelMat); bx.position.y=y; tower.add(bx);
     const bz=new THREE.Mesh(new THREE.BoxGeometry(0.0018,0.0018,0.018), steelMat); bz.position.y=y; tower.add(bz); }
   tower.position.set(-0.03,0,-0.02); g.add(tower);
-  const vab=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.02,0.03), bldMat); vab.position.set(0.10,0.01,0.07); g.add(vab);
-  const fuel=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.02,12), bldMat); fuel.position.set(-0.10,0.01,0.06); g.add(fuel);
-  const ctl=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.015,0.02), bldMat); ctl.position.set(-0.09,0.008,-0.08); g.add(ctl);
+  // 总装厂房(大块+窗带+大门)
+  const vab=new THREE.Group();
+  const vabBody=new THREE.Mesh(new THREE.BoxGeometry(0.055,0.026,0.032), bldMat); vabBody.position.y=0.013; vab.add(vabBody);
+  const vabWin=new THREE.Mesh(new THREE.BoxGeometry(0.056,0.006,0.033), new THREE.MeshBasicMaterial({color:0x2a4a6a})); vabWin.position.y=0.018; vab.add(vabWin);
+  const vabDoor=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,0.001), steelMat); vabDoor.position.set(0,0.006,0.017); vab.add(vabDoor);
+  vab.position.set(0.10,0,0.07); g.add(vab);
+  // 燃料罐一组(圆柱+圆顶)
+  [[-0.11],[ -0.13]].forEach(([x])=>{ const ft=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.018,14), bldMat); ft.position.set(x,0.009,0.05); g.add(ft);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(0.008,14,8,0,Math.PI*2,0,Math.PI/2), bldMat); cap.position.set(x,0.018,0.05); g.add(cap); });
+  // 控制中心(小楼+窗带)
+  const ctl=new THREE.Group();
+  const ctlBody=new THREE.Mesh(new THREE.BoxGeometry(0.032,0.015,0.02), bldMat); ctlBody.position.y=0.0075; ctl.add(ctlBody);
+  const ctlWin=new THREE.Mesh(new THREE.BoxGeometry(0.033,0.004,0.021), new THREE.MeshBasicMaterial({color:0x2a4a6a})); ctlWin.position.y=0.011; ctl.add(ctlWin);
+  ctl.position.set(-0.09,0,-0.08); g.add(ctl);
   return g;
 }
 function buildRocket(){
@@ -83,9 +97,13 @@ function buildChange(){
   return g;
 }
 function buildPlume(){ const g=new THREE.Group();
-  const mat=(color,op)=>new THREE.MeshBasicMaterial({color, transparent:true, opacity:op, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
-  const o=new THREE.Mesh(new THREE.ConeGeometry(0.022,0.082,20,1,true), mat(0xff8a2a,0.8)); o.rotation.x=Math.PI; o.position.y=-0.041; g.add(o);
-  const i=new THREE.Mesh(new THREE.ConeGeometry(0.011,0.072,20,1,true), mat(0xfff4c0,0.95)); i.rotation.x=Math.PI; i.position.y=-0.038; g.add(i);
+  // 实心亮焰(NormalBlending, 亮蓝天也清晰): 橙色外层 + 白内核 + 蓝白底部冲击环
+  const o=new THREE.Mesh(new THREE.ConeGeometry(0.024,0.09,22,1,true), new THREE.MeshBasicMaterial({color:0xffa838, transparent:true, opacity:0.96, side:THREE.DoubleSide, depthWrite:false}));
+  o.rotation.x=Math.PI; o.position.y=-0.045; g.add(o);
+  const i=new THREE.Mesh(new THREE.ConeGeometry(0.013,0.082,22,1,true), new THREE.MeshBasicMaterial({color:0xfff6cc, transparent:true, opacity:1.0, side:THREE.DoubleSide, depthWrite:false}));
+  i.rotation.x=Math.PI; i.position.y=-0.042; g.add(i);
+  const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.02,0.012,18,1,true), new THREE.MeshBasicMaterial({color:0xbfe0ff, transparent:true, opacity:0.85, side:THREE.DoubleSide, depthWrite:false}));
+  ring.position.y=-0.006; g.add(ring);
   g.userData.cone=o; g.visible=false; return g; }
 function buildSteam(){ const N=220, geo=new THREE.BufferGeometry(), arr=new Float32Array(N*3); geo.setAttribute('position',new THREE.BufferAttribute(arr,3)); const mat=new THREE.PointsMaterial({color:0xeef3f8, size:0.026, map:softDot(), transparent:true, opacity:0, depthWrite:false, sizeAttenuation:true}); const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[]}; return pts; }
 
