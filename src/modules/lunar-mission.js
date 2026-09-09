@@ -7,7 +7,7 @@ import { textureStore } from '../scene/texture-store.js';
 // —— 电影舞台比例（非 AU，自洽）——
 const RE=1.0, RM=0.27, MD=15.0, PARK=1.35, LUNAR_R=0.6, LUNAR_ORBITS=2;
 const ORDER=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
-const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:5.5, SPHERE:9, STAGE_SEP:2.2, EARTH_ORBIT:6, TRANSFER:18, LOI:5, LUNAR_ORBIT:8, LANDING:11 };
+const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:5.5, SPHERE:9, STAGE_SEP:2.2, EARTH_ORBIT:9, TRANSFER:18, LOI:3, LUNAR_ORBIT:8, LANDING:11 };
 const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'分级脱离', EARTH_ORBIT:'地球轨道', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
 
 function tex(cb){ const c=document.createElement('canvas'); c.width=128; c.height=64; cb(c.getContext('2d')); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
@@ -182,11 +182,11 @@ export class LunarMission {
     if(p==='LIFTOFF'){ this.plumeR.visible=true; }
     if(p==='SPHERE'){ this.plumeR.visible=false; }
     if(p==='STAGE_SEP'){ this.plumeR.visible=false; this.stageSepT=0; if(this.boosters) this.boosters.userData.sep={t:0}; }
-    if(p==='EARTH_ORBIT'){ this.change.visible=true; this.rocket.visible=false; if(this.boosters) this.boosters.visible=false; this.linePark.visible=true; }
-    if(p==='TRANSFER'){ this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; }
+    if(p==='EARTH_ORBIT'){ this.change.visible=false; this.rocket.visible=true; if(this.boosters) this.boosters.visible=false; this.linePark.visible=true; }
+    if(p==='TRANSFER'){ this.change.visible=true; this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; this._transSepT=0; }
     if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); if(this.speedArrows) this.speedArrows.visible=false; }
     if(p==='LUNAR_ORBIT'){ this.plumeC.visible=false; this._lam=0; this._reveal(this.lineLunar,0); this.lineTransfer.visible=false; }
-    if(p==='LANDING'){ this._detachLander(); this.plumeC.visible=true; if(this.plumeC) this.plumeC.scale.setScalar(1.4); if(this.landLight) this.landLight.intensity=2.2; }
+    if(p==='LANDING'){ this._detachLander(); this.plumeC.visible=true; if(this.plumeC) this.plumeC.scale.setScalar(0.8); if(this.landLight) this.landLight.intensity=2.2; }
     if(p==='LANDED'){ this.plumeC.visible=false; this._showSuccess(); }
   }
   _hideLines(){ [this.linePark,this.lineTransfer,this.lineLunar].forEach(l=>{ if(l){ l.visible=false; if(l.geometry) l.geometry.setDrawRange(0,0); } }); if(this.speedArrows) this.speedArrows.visible=false; }
@@ -249,13 +249,20 @@ export class LunarMission {
         }
         break; }
       case 'EARTH_ORBIT': {
-        const th=Math.PI/2 + k*(Math.PI/2);  // 从 +Y 发射点逆时针飞 1/4 圈到 -X(TLI点), 方向与转移一致
-        this.change.position.copy(this._park(th));
-        this._pointUp(this.change, this._tangentPark(th));
+        // 火箭(含整流罩/嫦娥)绕地球一圈多(450°), 到 TLI 点(-X); 方向与转移一致
+        const th=Math.PI/2 + k*(Math.PI/2 + Math.PI*2);
+        this.rocket.position.copy(this._park(th));
+        this._pointUp(this.rocket, this._tangentPark(th));
         this._reveal(this.linePark, k);
         break; }
       case 'TRANSFER': {
-        // TLI 点在 -X(与停泊轨道同向), 沿转移椭圆(凸 -Y 侧)飞向月球停泊轨近侧
+        // TLI 点(-X): 上面级分离, 嫦娥卫星出舱, 沿转移椭圆(凸-Y)飞向月球停泊轨近侧
+        if(this._transSepT===undefined) this._transSepT=0;
+        this._transSepT+=dt;
+        const f=Math.max(0, 1-this._transSepT/1.4);   // 火箭(上面级)分离淡出
+        this.rocket.children.forEach(c=>{ if(c.material){ c.material.transparent=true; c.material.opacity=f; } });
+        if(f<=0) this.rocket.visible=false;
+        this.rocket.position.copy(this._park(Math.PI));
         const nu=Math.PI*ke;
         this.change.position.copy(this._transfer(nu));
         const nuP=Math.max(nu-0.02,0.001);
@@ -264,14 +271,10 @@ export class LunarMission {
         this._reveal(this.lineTransfer, k);
         break; }
       case 'LOI': {
-        const nu=Math.PI*ke;
-        this.change.position.copy(this._transfer(nu));
-        const nuP=Math.max(nu-0.02,0.001);
-        const vel=this._transfer(nu).sub(this._transfer(nuP)).normalize();
-        this._pointUp(this.change, vel);
+        // 到达月球停泊轨近侧: 反向制动(被月球"抓住"), 不重复转移运动
+        this.change.position.copy(this._lunar(Math.PI));
+        this._pointUp(this.change, this._tangentLunar(Math.PI));
         this.plumeC.userData.cone.scale.setScalar(1+0.3*Math.sin(this.pt*25));
-        // 到达转移远日点(=月球停泊轨近侧)后进入绕月
-        if(k>=1){ this.change.position.copy(this._lunar(Math.PI)); }
         break; }
       case 'LUNAR_ORBIT': {
         this._lam=Math.PI + k*Math.PI*2*LUNAR_ORBITS; this.change.position.copy(this._lunar(this._lam));
@@ -281,7 +284,7 @@ export class LunarMission {
       case 'LANDING': {
         this._lam+=dt*0.5; this.change.position.copy(this._lunar(this._lam));
         this._pointUp(this.change, this._tangentLunar(this._lam));
-        const lander=this.change.userData.lander, to=new THREE.Vector3(MD-RM*0.95,0,0);
+        const lander=this.change.userData.lander, to=new THREE.Vector3(MD-RM-0.045,0,0);   // 落点=月面+腿高, 腿不扎进月面
         lander.position.copy(this._landerStart).lerp(to, ke);
         this._pointUp(lander, to.clone().sub(new THREE.Vector3(MD,0,0)).normalize());
         if(this.pt%0.08<dt) this._dust(lander.position);
@@ -290,7 +293,7 @@ export class LunarMission {
         this._lam+=dt*0.4; this.change.position.copy(this._lunar(this._lam));
         this._pointUp(this.change, this._tangentLunar(this._lam));
         const lander=this.change.userData.lander;
-        lander.position.copy(new THREE.Vector3(MD-RM*0.95,0,0)); this._pointUp(lander, new THREE.Vector3(-1,0,0)); break; }
+        lander.position.copy(new THREE.Vector3(MD-RM-0.045,0,0)); this._pointUp(lander, new THREE.Vector3(-1,0,0)); break; }
     }
     const i=ORDER.indexOf(this.phase);
     if(k>=1 && i>=0 && i<ORDER.length-1) this._setPhase(ORDER[i+1]);
@@ -322,7 +325,7 @@ export class LunarMission {
       case 'STAGE_SEP': {
         pos.set(0.9, 2.0, 1.3); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
       case 'EARTH_ORBIT': {
-        pos.copy(this.change.position).add(new THREE.Vector3(1.1, 0.9, 1.5)); tgt.copy(this.change.position); U.set(0,1,0); break; }
+        pos.copy(this.rocket.position).add(new THREE.Vector3(1.1, 0.9, 1.5)); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
       case 'TRANSFER': {
         // 长推近：开始广(带地球+月球+椭圆参照=空间线), 越近月球越逼近
         const k=Math.min(this.pt/DUR.TRANSFER,1);
@@ -334,9 +337,9 @@ export class LunarMission {
         // 缓慢环绕：相机沿月球轨道外侧缓慢跟拍, 镜头有"意味"
         pos.copy(this.change.position).add(new THREE.Vector3(0.6, 0.9, 0.7)); tgt.copy(this.change.position); U.set(0,1,0); break; }
       case 'LANDING': case 'LANDED': {
-        // 月面观察镜头：站在月面着陆点旁, 仰视登月器缓缓降落(慢镜高潮)
-        const site2=new THREE.Vector3(MD-RM*0.95,0,0);
-        pos.copy(site2).add(new THREE.Vector3(-0.03,0,0.24)); tgt.copy(lander.position); U.set(-1,0,0); break; }
+        // 月面水平观察视角(同发射前地面机位): 站在月面低角度仰视登月器缓缓降落
+        const site2=new THREE.Vector3(MD-RM-0.045,0,0);
+        pos.copy(site2).add(new THREE.Vector3(-0.02,0,0.15)); tgt.copy(lander.position); U.set(-1,0,0); break; }
       default: pos.set(0,2.4,2.0); tgt.set(0,0,0); U.set(0,1,0);
     }
     return {pos,tgt,up};
@@ -375,8 +378,8 @@ export class LunarMission {
     const p=document.getElementById('mission-phase'), s=document.getElementById('mission-sub'); if(!p) return;
     p.textContent=PHASE_NAME[this.phase]||this.phase; let sub='';
     const WHY={ COUNTDOWN:'一切就绪，等待点火', IGNITION:'火焰 + 导流槽水雾喷涌', LIFTOFF:'突破大气，逐渐摆脱地球引力',
-      SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'分级脱离：多级更省燃料', EARTH_ORBIT:'先绕地球一圈，获得入轨速度',
-      TRANSFER:'为什么不是直线飞？沿椭圆转移最省燃料', LOI:'为什么必须制动？不减速会飞过月球', LUNAR_ORBIT:'绕月探测，寻找落点',
+      SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'分级脱离：多级更省燃料', EARTH_ORBIT:'火箭绕地球一圈，获得入轨速度',
+      TRANSFER:'上面级分离，嫦娥卫星出舱 · 为什么不是直线飞？沿椭圆最省燃料', LOI:'为什么必须制动？不减速会飞过月球', LUNAR_ORBIT:'嫦娥绕月探测，寻找落点',
       LANDING:'反推减速 → 缓缓降落', LANDED:'已在月球表面' };
     sub=WHY[this.phase]||'';
     if(this.phase==='TRANSFER'){ const k=Math.min(this.pt/DUR.TRANSFER,1); sub+=`（转移 ${Math.round(k*100)}%）`; }
