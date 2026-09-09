@@ -109,6 +109,7 @@ export class LunarMission {
     sc.add(new THREE.AmbientLight(0x557, 0.9));
     const sun=new THREE.PointLight(0xffffff, 3.2, 0, 0); sun.position.set(30,22,12); sc.add(sun);
     this.landLight=new THREE.PointLight(0xffe6c0, 0, 8, 2); this.landLight.position.set(MD-RM*0.4, 1.5, 3); sc.add(this.landLight);
+    this.moonFill=new THREE.PointLight(0xf0e6d6, 1.1, 7, 2); this.moonFill.position.set(MD-4, 1.5, 1); sc.add(this.moonFill);
     const earth=new THREE.Mesh(new THREE.SphereGeometry(RE, 72, 72), new THREE.MeshStandardMaterial({color:0x2f6fb0, roughness:.7})); earth.name='earth'; sc.add(earth);
     this._loadTex('earth_daymap', t=>{ if(t&&earth.material){ earth.material.map=t; earth.material.needsUpdate=true; } });
     const moon=new THREE.Mesh(new THREE.SphereGeometry(RM, 56, 56), new THREE.MeshStandardMaterial({color:0xb8b8b8, roughness:.9})); moon.name='moon'; moon.position.set(MD,0,0); sc.add(moon);
@@ -363,7 +364,7 @@ export class LunarMission {
     const shown=this._inMoon?1:frac;
     fill.style.width=Math.round(shown*100)+'%'; dot.style.left=Math.round(shown*100)+'%';
     if(dist){ const dM=Math.max(0, MD-cx); const dE=Math.abs(cx);
-      if(this._inMoon) dist.textContent = (this.phase==='LANDING'||this.phase==='LANDED')?'已抵达月球 · 正在着陆':`已抵达月球 · 绕月飞行`;
+      if(this._inMoon) dist.textContent = this.phase==='LOI'?'正在月球制动':((this.phase==='LANDING'||this.phase==='LANDED')?'已抵达月球 · 正在着陆':'已抵达月球 · 绕月飞行');
       else dist.textContent=`距月球 ${(dM*3.844).toFixed(1)} 万公里　距地球 ${(dE*3.844).toFixed(1)} 万公里`; }
   }
   _detachLander(){ const ch=this.change, lander=ch.userData.lander; const wp=lander.getWorldPosition(new THREE.Vector3()); ch.remove(lander); this.scene.add(lander); lander.position.copy(wp); ch.remove(this.plumeC); lander.add(this.plumeC); this._landerStart=wp.clone(); }
