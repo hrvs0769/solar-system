@@ -1010,6 +1010,9 @@ export class LunarMission extends ModuleBase {
       if(p==='TRANSFER') this._transSepT=this.pt;
       this.update(0);
     }
+    // 预热过程会重新触发 _enterPhase(绕地球段会开启自由视角)，这里再关一次，
+    // 否则 _updateCamera 会走自由视角分支提前 return，拍到的不是导演机位。
+    this._freeCam=false; if(cc) cc.enabled=false;
     const d=this._camDesired();            // 定格在该阶段导演机位
     this._cam.pos.copy(d.pos); this._cam.tgt.copy(d.tgt); this._cam.up.copy(d.up);
     this._updateCamera(0);
