@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { ModuleBase } from './module-base.js';
 import { textureStore } from '../scene/texture-store.js';
-import { searchEclipses, moonGeoScene, helioScene, getPhase } from '../sim/astro.js';
+import { searchEclipses, eclipseState } from '../sim/astro.js';
+import { isKidMode } from '../ui/kid-mode.js';
 import { dateToJd, fmtJdDate } from '../sim/timeutil.js';
 
 const R_EARTH=0.03, R_MOON=0.012, R_MOON_ORBIT=0.12, R_SUN=0.05, SUN_DIST=0.42;
@@ -43,12 +44,12 @@ export class Eclipse extends ModuleBase {
     const host=document.getElementById('module-overlay');
     host.innerHTML=`<div class="module-ctx open">
       <div class="evt-list open" id="evt-list" style="max-height:38vh;width:230px;top:60px;right:12px"></div>
-      <div style="position:absolute;bottom:64px;left:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <div style="position:absolute;bottom:88px;left:14px;display:flex;gap:8px;flex-wrap:wrap">
         <span style="color:var(--muted);font-size:13px;align-self:center">时间线(±3天)：</span>
         <input type="range" id="evt-timeline" min="0" max="100" value="50" style="width:180px">
         <button class="tc-btn" id="evt-back">返回全景</button>
       </div>
-      <div style="position:absolute;bottom:120px;left:14px;display:none;background:var(--panel-solid);padding:12px 14px;border-radius:var(--radius);max-width:320px;z-index:3" id="evt-detail">
+      <div style="position:absolute;top:64px;left:14px;display:none;background:var(--panel-solid);padding:12px 14px;border-radius:var(--radius);max-width:320px;z-index:3" id="evt-detail">
         <div id="evt-title" style="color:var(--accent);font-weight:600;margin-bottom:6px"></div>
         <div id="evt-meta" style="color:var(--muted);font-size:13px"></div>
         <div style="margin-top:8px;font-size:13px;line-height:1.6" id="evt-explain"></div>
@@ -77,66 +78,75 @@ export class Eclipse extends ModuleBase {
       document.getElementById('evt-title').textContent=`${ev.type==='solar'?'日食':'月食'}：${KIND[ev.kind]||ev.kind}`;
       document.getElementById('evt-meta').textContent=`${fmtJdDate(ev.jd)}（本地）· 与权威目录一致`;
       document.getElementById('evt-explain').innerHTML = ev.type==='solar'
-        ? '月球在地球与太阳之间，挡住阳光，影子落在地球上（朔 + 靠近黄道交点）。'
-        : '地球在太阳与月球之间，挡住阳光，影子落在月球上（望 + 靠近黄道交点）。'; }
+        ? '<span class="adult-only">月球在地球与太阳之间，挡住阳光，影子落在地球上（朔 + 靠近黄道交点）。</span>'
+          + '<span class="kid-only">月球跑到太阳和地球中间，把太阳挡住了，它的影子落到地球上，白天就变黑了。</span>'
+        : '<span class="adult-only">地球在太阳与月球之间，挡住阳光，影子落在月球上（望 + 靠近黄道交点）。</span>'
+          + '<span class="kid-only">地球跑到太阳和月球中间，把照向月球的光挡住了，月球就变暗啦。</span>'; }
     const tl=document.getElementById('evt-timeline'); if(tl) tl.value=50;
     return ev;
   }
 
   update(dt){
     const jd=this.ctx.clock.jd;
-    const e=helioScene('earth',jd); const sdir=new THREE.Vector3(-e.x,-e.y,-e.z).normalize(); this._sdir=sdir;
-    const g=moonGeoScene(jd); const mdir=new THREE.Vector3(g.x,g.y,g.z).normalize();
+    const st=eclipseState(jd);
+    const sdir=new THREE.Vector3(st.sdir.x,st.sdir.y,st.sdir.z); this._sdir=sdir;
+    const mdir=new THREE.Vector3(st.mdir.x,st.mdir.y,st.mdir.z);
     this.sun.position.copy(sdir.clone().multiplyScalar(SUN_DIST)); this.sunGlow.position.copy(this.sun.position);
     const moonPos=mdir.clone().multiplyScalar(R_MOON_ORBIT); this.moon.position.copy(moonPos);
     this.moonShadow.position.copy(moonPos); this.moonShadow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), sdir.clone().negate());
     this.earthShadow.position.set(0,0,0); this.earthShadow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), sdir.clone().negate());
-    const solar = mdir.dot(sdir) > 0.5;
-    this.hitMark.visible=true; this.hitMark.position.copy(solar? new THREE.Vector3(0,0,0) : moonPos);
-    this._drawSchematic(sdir, mdir, solar);
+    this.hitMark.visible = st.solar || st.lunar;
+    this.hitMark.position.copy(st.solar ? new THREE.Vector3(0,0,0) : moonPos);
+    this._drawSchematic(sdir, mdir, st);
   }
 
-  _drawSchematic(sdir, mdir, solar){
+  _drawSchematic(sdir, mdir, st){
     if(!this.sctx) return;
     if(typeof document!=='undefined' && document.body && document.body.classList.contains('mobile')) return; // 手机端不画桌面示意图
+    const kid=isKidMode();
+    const F12=kid?'15px sans-serif':'12px sans-serif', F13=kid?'16px sans-serif':'13px sans-serif', F14=kid?'17px sans-serif':'14px sans-serif';
     const cv=this.sc, w=cv.width, h=cv.height, g=this.sctx;
     g.clearRect(0,0,w,h); const bg=g.createLinearGradient(0,0,0,h); bg.addColorStop(0,'#0d1526'); bg.addColorStop(1,'#05080f'); g.fillStyle=bg; g.fillRect(0,0,w,h); g.fillStyle='#10182c'; g.fillRect(20,20,w-40,h-40);
     const cx=w*0.45, cy=h*0.6, R=Math.min(w,h)*0.10;
-    g.fillStyle='#c8d2e2'; g.font='14px sans-serif'; g.textAlign='left'; g.fillText('成因示意 · 为什么不是每月都发生日月食', 30, 42);
+    g.fillStyle='#c8d2e2'; g.font=F14; g.textAlign='left';
+    g.fillText(kid?'为什么不是每个月都有日食和月食？':'成因示意 · 为什么不是每月都发生日月食', 30, Math.max(kid?132:78, cy-R*3.4));
     g.save(); g.translate(cx,cy);
     const sunX=R*3.3, mOrbitR=R*1.8;
     // 黄道面
     g.setLineDash([6,5]); g.strokeStyle='rgba(255,213,74,.5)'; g.lineWidth=1.5;
     g.beginPath(); g.moveTo(-R*2.9,0); g.lineTo(sunX-R*0.6,0); g.stroke(); g.setLineDash([]);
-    g.fillStyle='rgba(255,213,74,.7)'; g.font='12px sans-serif'; g.textAlign='center'; g.fillText('黄道面', -R*2.4, 16);
+    g.fillStyle='rgba(255,213,74,.7)'; g.font=F12; g.textAlign='center'; g.fillText('黄道面', -R*2.4, 16);
     // 太阳（带光晕）
     const sg=g.createRadialGradient(sunX,0,R*0.1, sunX,0,R*1.6); sg.addColorStop(0,'rgba(255,213,74,.9)'); sg.addColorStop(1,'rgba(255,213,74,0)');
     g.fillStyle=sg; g.beginPath(); g.arc(sunX,0,R*1.6,0,Math.PI*2); g.fill();
     g.beginPath(); g.arc(sunX,0,R*0.7,0,Math.PI*2); g.fillStyle='#ffd54a'; g.fill();
-    g.fillStyle='#e8ecf5'; g.font='12px sans-serif'; g.fillText('太阳', sunX, R*0.95);
+    g.fillStyle='#e8ecf5'; g.font=F12; g.fillText('太阳', sunX, R*0.95);
     // 月球轨道（倾斜≈5°）
     g.beginPath(); g.ellipse(0,0, mOrbitR, mOrbitR*Math.sin(MOON_INCL)+R*0.7, 0, 0, Math.PI*2);
     g.strokeStyle='rgba(150,170,200,.55)'; g.lineWidth=1.5; g.stroke();
-    g.fillStyle='rgba(150,170,200,.6)'; g.font='12px sans-serif'; g.fillText('月球轨道（倾角≈5°）', mOrbitR*0.35, -mOrbitR*Math.sin(MOON_INCL)-R*0.8);
+    g.fillStyle='rgba(150,170,200,.6)'; g.font=F12; g.fillText('月球轨道（倾角≈5°）', mOrbitR*0.35, -mOrbitR*Math.sin(MOON_INCL)-R*0.8);
     // 两节点
     g.fillStyle='#ff7b7b'; g.beginPath(); g.arc(mOrbitR,0,4,0,Math.PI*2); g.fill();
     g.beginPath(); g.arc(-mOrbitR,0,4,0,Math.PI*2); g.fill();
-    g.fillStyle='#ff7b7b'; g.font='12px sans-serif'; g.fillText('交点(节点)', mOrbitR+6, -8);
+    g.fillStyle='#ff7b7b'; g.font=F12; g.fillText('交点(节点)', mOrbitR+6, -8);
     // 地球
     g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.fillStyle='#3a7bc0'; g.fill(); g.lineWidth=2; g.strokeStyle='#7fb2ff'; g.stroke();
-    g.fillStyle='#e8ecf5'; g.font='12px sans-serif'; g.fillText('地球', 0, R+18);
+    g.fillStyle='#e8ecf5'; g.font=F12; g.fillText('地球', 0, R+18);
     // 月球
     const moonAng=Math.atan2(mdir.z, mdir.x);
     const mx0=Math.cos(moonAng)*mOrbitR, mz0=Math.sin(moonAng)*mOrbitR;
     const moonScreenY=mz0*0.9 + mdir.y*R*5;
     g.beginPath(); g.arc(mx0, moonScreenY, R*0.3, 0, Math.PI*2); g.fillStyle='#cfcfcf'; g.fill(); g.lineWidth=1.5; g.strokeStyle='#efefef'; g.stroke();
-    g.fillStyle='#e8ecf5'; g.font='12px sans-serif'; g.fillText('月球', mx0, moonScreenY-R*0.45);
+    g.fillStyle='#e8ecf5'; g.font=F12; g.fillText('月球', mx0, moonScreenY-R*0.45);
     // 说明
-    g.fillStyle='#9aa7bd'; g.font='13px sans-serif'; g.textAlign='left';
-    g.fillText('……只有当月球飞到黄道面附近（两个节点处）且正逢朔（新月）', -R*2.9, -R*2.2);
-    g.fillText('或望（满月）时，日月地才近似成线，才有日/月食。', -R*2.9, -R*1.75);
-    g.fillStyle=solar?'#ffd54a':'#5aa0ff'; g.font='14px sans-serif';
-    g.fillText(solar?'此刻：月球在地球与太阳之间 → 日食':'此刻：地球在太阳与月球之间 → 月食', -R*2.9, -R*1.2);
+    g.fillStyle='#9aa7bd'; g.font=F13; g.textAlign='left';
+    g.fillText(kid?'月球绕地球转圈的时候，有时高一点、有时低一点。':'……只有当月球飞到黄道面附近（两个节点处）且正逢朔（新月）', -R*2.9, -R*(kid?2.6:2.2));
+    g.fillText(kid?'只有它刚好和太阳、地球排成一条直线，才有日食和月食。':'或望（满月）时，日月地才近似成线，才有日/月食。', -R*2.9, -R*(kid?2.15:1.75));
+    g.fillStyle = st.solar ? '#ffd54a' : (st.lunar ? '#5aa0ff' : '#9aa7bd'); g.font=F14;
+    g.fillText(st.solar ? '此刻：月球挡住太阳 → 日食'
+      : st.lunar ? '此刻：地球的影子落在月球上 → 月食'
+      : (kid?'此刻：月球偏上或偏下，影子错开了 → 没有日月食'
+        : `此刻：月球偏离黄道面 ${Math.abs(st.latDeg).toFixed(1)}° → 没有日月食`), -R*2.9, -R*(kid?1.6:1.2));
     g.restore();
   }
 

@@ -15,3 +15,6 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+
+# 视觉自检截图
+shots/

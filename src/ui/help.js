@@ -20,11 +20,23 @@ export function setHelpHandler(ctx){
   return showHelp;
 }
 
+// 弹层挂在独立容器上，不得复用 #module-overlay——那是教学模块的挂载点，
+// 直接改它的 innerHTML 会把模块自己的按钮条和说明面板一起清空。
+function modalHost(){
+  let host = document.getElementById('modal-layer');
+  if(!host){
+    host = document.createElement('div');
+    host.id = 'modal-layer';
+    host.style.cssText = 'position:fixed;inset:0;z-index:60;pointer-events:none';
+    document.body.appendChild(host);
+  }
+  return host;
+}
 export function openModal(id, html){
-  const host = document.getElementById('module-overlay');
+  const host = modalHost();
   host.innerHTML = `<div class="modal" id="modal-${id}"><div class="card">${html}</div></div>`;
   host.querySelector(`#modal-${id}`).addEventListener('click', e=>{
     if(e.target.classList.contains('modal') || e.target.hasAttribute('data-close')) closeModal();
   });
 }
-export function closeModal(){ document.getElementById('module-overlay').innerHTML=''; }
+export function closeModal(){ const host = document.getElementById('modal-layer'); if(host) host.innerHTML=''; }

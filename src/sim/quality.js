@@ -2,9 +2,9 @@
 import { bus } from './bus.js';
 
 export const TIERS = [
-  { id:'high', label:'高', pixelRatio:2, stars:15000, clouds:true, atmosphere:true, shadows:false, starsVisible:true },
-  { id:'mid',  label:'中', pixelRatio:1.5, stars:10000, clouds:true, atmosphere:true, shadows:false, starsVisible:true },
-  { id:'low',  label:'低', pixelRatio:1,   stars:5000,  clouds:false, atmosphere:true, shadows:false, starsVisible:true },
+  { id:'high', label:'高', pixelRatio:2, stars:15000, clouds:true,  atmosphere:true },
+  { id:'mid',  label:'中', pixelRatio:1.5, stars:10000, clouds:true,  atmosphere:true },
+  { id:'low',  label:'低', pixelRatio:1,   stars:5000,  clouds:false, atmosphere:true },
 ];
 
 export class Quality {

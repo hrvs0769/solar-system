@@ -11,7 +11,7 @@ body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft
 #app canvas{display:block;width:100%;height:100%}
 
 /* ---- UI 顶层 ---- */
-#ui{position:fixed;inset:0;pointer-events:none;font-size:calc(16px*var(--ui-s))}
+#ui{position:fixed;inset:0;pointer-events:none;font-size:calc(16px*var(--ui-s));z-index:2}
 #ui>*{pointer-events:auto}
 .hidden-ui #ui{display:none}
 
@@ -86,7 +86,7 @@ kbd{background:#222c44;border-radius:4px;padding:2px 7px;font-size:calc(12px*var
 .toast.warn{border-color:var(--warn)} .toast.err{border-color:var(--err)} .toast.ok{border-color:var(--ok)}
 @keyframes tin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 
-/* 月相实验室 / 潮汐 模块内角标 */
+/* 月相实验室 模块内角标 */
 .viewlabel{position:absolute;padding:6px 12px;background:var(--panel);border-radius:var(--radius);color:var(--muted);font-size:calc(13px*var(--ui-s));border:1px solid rgba(255,255,255,.08)}
 .module-ctx{position:absolute;inset:0;display:none;pointer-events:none}
 .module-ctx.open{display:block}
@@ -100,3 +100,63 @@ kbd{background:#222c44;border-radius:4px;padding:2px 7px;font-size:calc(12px*var
 .evt{cursor:pointer;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);margin-bottom:6px;font-size:calc(14px*var(--ui-s))}
 .evt:hover{background:rgba(255,255,255,.08)} .evt.active{border-color:var(--accent)}
 .evt .kind{color:var(--accent)}
+
+/* ---- 儿童模式：放大字号与热区、隐藏专业控件、切换儿童版文案 ---- */
+body.kid-mode{--ui-s:1.35}
+body.kid-mode #btn-quality,
+body.kid-mode #btn-bm,
+body.kid-mode #btn-almanac,
+body.kid-mode #btn-shot,
+body.kid-mode #btn-qr,
+body.kid-mode #btn-about,
+body.kid-mode #vt-prop,
+body.kid-mode #vt-moon,
+body.kid-mode #vt-kepler,
+body.kid-mode #vt-label,
+body.kid-mode #rate-select,
+body.kid-mode #btn-rate-down,
+body.kid-mode #btn-rate-up,
+body.kid-mode #date-input,
+body.kid-mode #zoom-val,
+body.kid-mode #scale-badge,
+body.kid-mode .tab[data-mod="satellite"]{display:none !important}
+body.kid-mode .tab{padding:12px 22px;font-size:calc(17px*var(--ui-s))}
+body.kid-mode .icon-btn,
+body.kid-mode .tc-btn{min-width:52px;min-height:52px;font-size:calc(18px*var(--ui-s))}
+body.kid-mode .tc-btn.big{min-width:68px}
+body.kid-mode #planet-menu .pm-item{min-height:52px;font-size:calc(17px*var(--ui-s))}
+body.kid-mode #info-panel p.desc{font-size:calc(17px*var(--ui-s));line-height:1.75}
+body.kid-mode #info-panel .review{display:none}
+.kid-only{display:none}
+body.kid-mode .kid-only{display:block}
+body.kid-mode .adult-only{display:none}
+.speak-btn{border-color:rgba(90,160,255,.45);color:var(--accent2)}
+
+/* 月相测验：图形选项 */
+.quiz-opt{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border-radius:var(--radius);background:var(--panel);border:1px solid rgba(255,255,255,.12);cursor:pointer}
+.quiz-opt span{font-size:12px;color:var(--muted)}
+.quiz-opt:hover{background:rgba(255,255,255,.1)}
+.quiz-opt.ok{border-color:var(--ok);background:rgba(87,211,138,.16)}
+.quiz-opt.bad{border-color:var(--err);background:rgba(255,107,107,.16)}
+.quiz-opt.dim{opacity:.4}
+body.kid-mode .quiz-opt svg{width:76px;height:76px}
+body.kid-mode .quiz-opt span{font-size:15px}
+body.kid-mode #moon-ray,
+body.kid-mode #moon-shadow{display:none !important}
+body.kid-mode #mp-why-body{display:block !important}
+body.kid-mode #mp-why-toggle{display:none !important}
+
+/* 日月食：儿童版详情与事件列表放大 */
+body.kid-mode #evt-title{font-size:calc(18px*var(--ui-s)) !important}
+body.kid-mode #evt-meta{font-size:calc(14px*var(--ui-s)) !important}
+body.kid-mode #evt-explain{font-size:calc(17px*var(--ui-s)) !important;line-height:1.8}
+body.kid-mode #evt-detail{max-width:420px !important}
+body.kid-mode #evt-list{width:260px}
+body.kid-mode #evt-list .evt{font-size:calc(16px*var(--ui-s));padding:12px}
+
+/* 奔月任务：儿童版 HUD 放大 */
+body.kid-mode #mission-phase{font-size:calc(17px*var(--ui-s)) !important}
+body.kid-mode #mission-sub{font-size:calc(14px*var(--ui-s)) !important;max-width:300px !important;line-height:1.5}
+body.kid-mode #mission-count{font-size:calc(28px*var(--ui-s)) !important}
+body.kid-mode #mission-dist{font-size:calc(13px*var(--ui-s)) !important}
+body.kid-mode #mission-hud button{font-size:calc(15px*var(--ui-s)) !important;padding:9px 16px !important}

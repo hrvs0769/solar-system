@@ -35,7 +35,12 @@ await page.goto(base, {waitUntil:'load', timeout:30000});
 await sleep(4500);
 
 const ev = fn => page.evaluate(fn);
-const click = async (sel)=>{ await page.click(sel); await sleep(250); };
+const click = async (sel)=>{
+  const el = await page.$(sel);
+  if(!el){ check(`点击 ${sel}`, false, '元素不存在'); return false; }
+  try{ await el.click(); }catch(e){ check(`点击 ${sel}`, false, '元素不可点击'); return false; }
+  await sleep(250); return true;
+};
 
 console.log('\n===== 1. 启动与基础 =====');
 const boot = await ev(()=>({ hasSS:!!window.__SS, currentId:window.__SS?.currentId, drawCalls: window.__SS?.renderer?.info?.render?.calls }));
@@ -45,7 +50,7 @@ check('场景有绘制(drawCalls>0)', boot.drawCalls>0, boot.drawCalls);
 check('无页面 JS 报错', pageErrors.length===0, pageErrors.join('; '));
 
 console.log('\n===== 2. 模块切换(顶栏) =====');
-for(const [id,sel] of [['moon-phases','月相实验室'],['tides','潮汐'],['eclipse','日月食'],['satellite','卫星'],['orbit-view','全景']]){
+for(const [id,sel] of [['moon-phases','月相实验室'],['eclipse','日月食'],['satellite','卫星'],['orbit-view','全景']]){
   await click(`#tabs .tab[data-mod="${id}"]`);
   const cur = await ev(()=>window.__SS.currentId);
   check(`切换到「${sel}」`, cur===id, cur);
@@ -60,25 +65,49 @@ await click('[data-preset="0"]');
 await sleep(400);
 const phaseTxt = await ev(()=>document.getElementById('phaseLabel')?.textContent||'');
 check('点「朔」预设 → 相位名含朔', /朔/.test(phaseTxt), phaseTxt);
+// 渲染 2 秒后几何体数不应增长（旧实现每帧新建 7 组几何体/材质）
+const geoBefore = await ev(()=>window.__SS.renderer.info.memory.geometries);
+await sleep(2000);
+const geoAfter = await ev(()=>window.__SS.renderer.info.memory.geometries);
+check('月相模块渲染2秒后几何体不增长', geoAfter <= geoBefore + 2, `${geoBefore}→${geoAfter}`);
 // 猜一猜
 await click('#moon-quiz'); await sleep(300);
 const quizOpen = await ev(()=> document.getElementById('quiz-box') && getComputedStyle(document.getElementById('quiz-box')).display!=='none');
 check('点「猜一猜」弹问题框', !!quizOpen);
+const quizLeak = await ev(()=>document.getElementById('phaseLabel')?.textContent||'');
+check('出题后不泄露答案', !/朔|上弦|望|下弦|照亮/.test(quizLeak), quizLeak);
+const quizIcons = await ev(()=>{
+  const opts=[...document.querySelectorAll('#quiz-opts [data-a]')];
+  return { n:opts.length, svg:opts.filter(o=>o.querySelector('svg')).length };
+});
+check('测验选项为月相图形（不识字也能答）', quizIcons.n===4 && quizIcons.svg===4, JSON.stringify(quizIcons));
+// 儿童模式：说明卡切儿童版、专业按钮收起
+await click('#btn-kid'); await sleep(500);
+const kidMoon = await ev(()=>({
+  kidShown: getComputedStyle(document.getElementById('mp-why-kid')).display !== 'none',
+  adultHidden: getComputedStyle(document.getElementById('mp-why-adult')).display === 'none',
+  rayHidden: getComputedStyle(document.getElementById('moon-ray')).display === 'none',
+  speakBtn: !!document.querySelector('#moon-ctx .speak-btn'),
+}));
+check('儿童模式显示儿童版月相说明', kidMoon.kidShown && kidMoon.adultHidden, JSON.stringify(kidMoon));
+check('儿童模式收起「光线/地球影子」', kidMoon.rayHidden);
+check('月相说明有语音朗读按钮', kidMoon.speakBtn);
+await click('#btn-kid'); await sleep(400);
 // 光线/影子开关应能点击且不报错
 await click('#moon-ray'); await click('#moon-shadow');
 check('点「光线」「地球影子」无异常', pageErrors.length===0, pageErrors.join('; '));
+// 模块内按 F1：帮助弹层不得复用模块挂载点（旧实现直接改 #module-overlay，会连模块按钮条一起清空）
+await page.keyboard.press('F1'); await sleep(350);
+const helpInMod = await ev(()=>({ modal:!!document.getElementById('modal-help'), ctx:!!document.getElementById('moon-ctx'), quiz:!!document.getElementById('moon-quiz') }));
+check('模块内按 F1 弹出帮助', helpInMod.modal);
+check('F1 帮助不抹掉模块 UI', helpInMod.ctx && helpInMod.quiz, JSON.stringify(helpInMod));
+await page.keyboard.press('Escape'); await sleep(250);
+check('关闭帮助后模块 UI 仍在', await ev(()=>!!document.getElementById('moon-ctx')));
 // 返回全景按钮
 await click('#moon-back'); await sleep(300);
 check('月相「返回全景」→ orbit-view', (await ev(()=>window.__SS.currentId))==='orbit-view');
 
-console.log('\n===== 3.5 潮汐 / 日月食 模块按钮 =====');
-await click('#tabs .tab[data-mod="tides"]'); await sleep(400);
-const tideChart = await ev(()=>!!document.getElementById('tide-schematic'));
-check('潮汐模块有示意图画布', tideChart);
-await click('#tide-spring'); await click('#tide-neap'); await sleep(150);
-check('点「朔望大潮/上下弦小潮」无异常', pageErrors.length===0, pageErrors.join('; '));
-await click('#tide-back'); await sleep(300);
-check('潮汐「返回全景」→ orbit-view', (await ev(()=>window.__SS.currentId))==='orbit-view');
+console.log('\n===== 3.5 日月食 模块按钮 =====');
 await click('#tabs .tab[data-mod="eclipse"]'); await sleep(500);
 await click('#evt-back'); await sleep(300);
 check('日月食「返回全景」→ orbit-view', (await ev(()=>window.__SS.currentId))==='orbit-view');
@@ -99,11 +128,20 @@ const q0 = await ev(()=>window.__SS.quality.tierIndex);
 await click('#btn-quality'); await sleep(300);
 const q1 = await ev(()=>window.__SS.quality.tierIndex);
 check('点「画质」切换档位', q1!==q0, `${q0}→${q1}`);
+// 档位须真正作用到场景（旧实现只改 pixelRatio，云层/星场纹丝不动）
+await ev(()=>window.__SS.quality.setTier(0)); await sleep(600);
+const starHigh = await ev(()=>window.__SS.starfield.geometry.attributes.position.count);
+const callsHigh = await ev(()=>window.__SS.renderer.info.render.calls);
+await ev(()=>window.__SS.quality.setTier(2)); await sleep(600);
+const starLow = await ev(()=>window.__SS.starfield.geometry.attributes.position.count);
+const callsLow = await ev(()=>window.__SS.renderer.info.render.calls);
+check('降档后星场重建(点数减少)', starLow < starHigh, `${starHigh}→${starLow}`);
+check('降档后绘制调用减少(云层关闭)', callsLow < callsHigh, `${callsHigh}→${callsLow}`);
 await click('#btn-reset'); await sleep(300);
 const tgt = await ev(()=>({x:window.__SS.cameraRig.controls.target.x, y:window.__SS.cameraRig.controls.target.y, z:window.__SS.cameraRig.controls.target.z}));
 check('点「复位」→ 相机目标归原点', near(tgt.x,0)&&near(tgt.y,0)&&near(tgt.z,0), JSON.stringify(tgt));
 
-console.log('\n===== 4.5 新功能（书签/天象/拍照/四季/比例/面积/今晚月相） =====');
+console.log('\n===== 4.5 新功能（书签/天象/拍照/比例/面积/今晚月相） =====');
 await click('#btn-bm'); await sleep(400);
 check('点「书签」弹窗', await ev(()=>!!document.getElementById('modal-bookmarks')));
 await click('#bm-save'); await sleep(200);
@@ -126,14 +164,8 @@ await click('#vt-prop'); await sleep(200);
 await click('#vt-kepler'); await sleep(300);
 const keplerOn = await ev(()=>window.__SS.orbitView.kepler===true);
 check('「面积定律」开关打开', keplerOn);
-await click('#tabs .tab[data-mod="seasons"]'); await sleep(600);
-check('切换到「四季」模块', (await ev(()=>window.__SS.currentId))==='seasons');
-await click('[data-se="12-21"]'); await sleep(300);
-const jdAfter = await ev(()=>window.__SS.clock.jd);
-const decJd = Date.UTC(new Date().getUTCFullYear(),11,21,12)/86400000+2440587.5;
-check('四季「冬至」跳到12月', Math.abs(jdAfter-decJd)<2, jdAfter.toFixed(2));
-await click('#se-back'); await sleep(300);
-check('四季「返回全景」', (await ev(()=>window.__SS.currentId))==='orbit-view');
+await click('#tabs .tab[data-mod="orbit-view"]'); await sleep(400);
+check('切回全景', (await ev(()=>window.__SS.currentId))==='orbit-view');
 await ev(()=>{ window.__SS.clock.running=false; window.__SS.clock.setRate(3); });
 
 console.log('\n===== 5. 时间控制 =====');
@@ -190,6 +222,113 @@ const evAfter = await ev(()=>window.__SS.clock.jd);
 const detailShown = await ev(()=> document.getElementById('evt-detail') && getComputedStyle(document.getElementById('evt-detail')).display!=='none');
 check('点事件→时间跳转', evAfter!==evBefore, `${evBefore.toFixed(3)}→${evAfter.toFixed(3)}`);
 check('点事件→详情面板显示', !!detailShown);
+
+console.log('\n===== 9. 儿童模式 / 语音 / 背景音乐 =====');
+await click('#tabs .tab[data-mod="orbit-view"]'); await sleep(300);
+const kidOff = await ev(()=>({ has:!!document.getElementById('btn-kid'), on:document.body.classList.contains('kid-mode') }));
+check('顶栏有儿童模式开关', kidOff.has);
+check('默认非儿童模式', !kidOff.on);
+await click('#btn-kid'); await sleep(400);
+const kidOn = await ev(()=>({
+  on: document.body.classList.contains('kid-mode'),
+  qualityHidden: getComputedStyle(document.getElementById('btn-quality')).display==='none',
+  satHidden: getComputedStyle(document.querySelector('.tab[data-mod="satellite"]')).display==='none',
+  rateHidden: getComputedStyle(document.getElementById('rate-select')).display==='none',
+  fontSize: parseFloat(getComputedStyle(document.getElementById('ui')).fontSize),
+}));
+check('可开启儿童模式', kidOn.on);
+check('儿童模式隐藏画质等专业控件', kidOn.qualityHidden, JSON.stringify(kidOn));
+check('儿童模式隐藏卫星 Tab', kidOn.satHidden);
+check('儿童模式隐藏倍速选择', kidOn.rateHidden);
+check('儿童模式字号放大', kidOn.fontSize > 20, String(kidOn.fontSize));
+const ttsOk = await ev(()=>('speechSynthesis' in window) && !!document.getElementById('btn-voice'));
+check('顶栏有语音朗读开关且浏览器支持', ttsOk);
+await click('#btn-music'); await sleep(500);
+const musicOn = await ev(()=>window.__SS.music.isOn());
+check('背景音乐可开启', musicOn);
+await click('#btn-music'); await sleep(300);
+check('背景音乐可关闭', !(await ev(()=>window.__SS.music.isOn())));
+await click('#btn-kid'); await sleep(400);
+check('可退出儿童模式', !(await ev(()=>document.body.classList.contains('kid-mode'))));
+
+console.log('\n===== 10. 儿童模式：模块内文案 =====');
+await click('#tabs .tab[data-mod="eclipse"]'); await sleep(700);
+await click('#btn-kid'); await sleep(500);
+const evtKid = await ev(()=>{
+  const k=document.querySelector('#evt-explain .kid-only'), a=document.querySelector('#evt-explain .adult-only');
+  return { kid: k?getComputedStyle(k).display!=='none':false, adult: a?getComputedStyle(a).display!=='none':true, txt: k?.textContent||'' };
+});
+check('日月食详情切换儿童版文案', evtKid.kid && !evtKid.adult, JSON.stringify(evtKid));
+check('日月食儿童版文案不含「黄道交点」术语', !/黄道|交点|朔|望/.test(evtKid.txt), evtKid.txt.slice(0,30));
+const evtFont = await ev(()=>parseFloat(getComputedStyle(document.getElementById('evt-explain')).fontSize));
+check('日月食儿童版字号放大', evtFont > 20, String(evtFont));
+// 示意图 canvas 是定位元素且挂载在 #ui 之后，历史实现会盖住顶栏左侧页签
+const layering = await ev(()=>{
+  const ui=getComputedStyle(document.getElementById('ui'));
+  const cv=document.getElementById('ev-schematic');
+  return { uiZ:ui.zIndex, cvPos:cv?getComputedStyle(cv).position:null, cvZ:cv?getComputedStyle(cv).zIndex:null };
+});
+check('顶栏 UI 层在示意图之上（不被盖住）', +layering.uiZ>0 && layering.cvZ==='auto', JSON.stringify(layering));
+const backHit = await ev(()=>{
+  const b=document.getElementById('evt-back'); const r=b.getBoundingClientRect();
+  const el=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
+  return { ok: el===b||b.contains(el), got: el?.id||el?.tagName };
+});
+check('日月食「返回全景」未被底部栏遮挡', backHit.ok, JSON.stringify(backHit));
+await click('#tabs .tab[data-mod="orbit-view"]'); await sleep(400);
+await ev(()=>document.getElementById('info-close')?.click()); await sleep(300);
+await click('#vt-mission'); await sleep(900);
+const hudKid = await ev(()=>({ phase:document.getElementById('mission-phase')?.textContent||'', sub:document.getElementById('mission-sub')?.textContent||'' }));
+check('奔月任务 HUD 切儿童版阶段名', hudKid.phase==='倒计时', hudKid.phase);
+check('奔月任务 HUD 切儿童版解说', hudKid.sub==='数到零，火箭就出发', hudKid.sub);
+await click('#mission-stop'); await sleep(400);
+check('停止奔月任务无残留 HUD', !(await ev(()=>!!document.getElementById('mission-hud'))));
+await click('#btn-kid'); await sleep(300);
+
+console.log('\n===== 11. 稳健性（老投影 / 长时运行 / 上下文丢失） =====');
+await page.setViewport({ width:1024, height:768 }); await sleep(700);
+const lowRes = await ev(()=>{
+  const btns=[...document.querySelectorAll('#topbar .icon-btn')];
+  const overflow=btns.filter(b=>{ const r=b.getBoundingClientRect(); return r.right>window.innerWidth+1||r.left<-1; }).length;
+  const bar=document.getElementById('topbar').getBoundingClientRect();
+  const play=document.getElementById('btn-play').getBoundingClientRect();
+  return { n:btns.length, overflow, barH:Math.round(bar.height), playVisible:play.width>0&&play.bottom<=window.innerHeight+1 };
+});
+check('1024×768 顶栏按钮不溢出视口', lowRes.overflow===0, JSON.stringify(lowRes));
+check('1024×768 顶栏换行后不遮挡过多画面', lowRes.barH<140, String(lowRes.barH));
+check('1024×768 底部播放按钮可见', lowRes.playVisible);
+const errBefore = pageErrors.length;
+await click('#btn-play'); await sleep(300);
+check('1024×768 下按钮可点且无报错', pageErrors.length===errBefore, pageErrors.slice(errBefore).join('; '));
+await page.setViewport({ width:1280, height:800 }); await sleep(700);
+const m1 = await ev(()=>({ g:window.__SS.renderer.info.memory.geometries, t:window.__SS.renderer.info.memory.textures }));
+await sleep(6000);
+const m2 = await ev(()=>({ g:window.__SS.renderer.info.memory.geometries, t:window.__SS.renderer.info.memory.textures }));
+check('持续渲染 6 秒几何体不增长', m2.g <= m1.g+2, `${m1.g}→${m2.g}`);
+check('持续渲染 6 秒贴图不增长', m2.t <= m1.t+2, `${m1.t}→${m2.t}`);
+await ev(()=>{ try{ sessionStorage.setItem('ss-gl-reloads','2'); }catch(e){} });
+await ev(()=>window.__SS.renderer.domElement.dispatchEvent(new Event('webglcontextlost',{cancelable:true})));
+await sleep(400);
+const glLost = await ev(()=>{
+  const el=document.getElementById('gl-lost');
+  return { has:!!el, btn:!!document.getElementById('gl-reload'), txt:el?.textContent||'' };
+});
+check('WebGL 上下文丢失时弹出恢复提示', glLost.has && glLost.btn, JSON.stringify(glLost));
+check('恢复提示含「重新开始」按钮文案', /重新开始/.test(glLost.txt));
+await ev(()=>document.getElementById('gl-lost')?.remove());
+// 老师漏拷 textures 文件夹（离线版最常见的部署失误）：贴图全 404 也必须能跑
+const page2 = await browser.newPage();
+try{
+  await page2.evaluateOnNewDocument(()=>{ try{ localStorage.setItem('ss-guide-done','1'); }catch(e){} });
+  await page2.setRequestInterception(true);
+  page2.on('request', r=>{ /textures\//.test(r.url()) ? r.abort() : r.continue(); });
+  const err2=[]; page2.on('pageerror', e=>err2.push(e.message));
+  await page2.goto(base, {waitUntil:'load', timeout:30000});
+  await sleep(6000);
+  const noTex = await page2.evaluate(()=>({ has:!!window.__SS, calls:window.__SS?.renderer?.info?.render?.calls||0 }));
+  check('贴图全部缺失时仍能启动（漏拷 textures 兜底）', noTex.has && noTex.calls>0, JSON.stringify(noTex));
+  check('贴图缺失时无 JS 报错', err2.length===0, err2.join('; '));
+} finally { await page2.close(); }
 
 console.log('\n===== 汇总 =====');
 const pass = results.filter(r=>r.pass).length;

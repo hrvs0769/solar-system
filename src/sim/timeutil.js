@@ -1,6 +1,6 @@
 // 时间工具：JD ↔ Date（UTC 基准）
 export const MIN_JD = 2415020.5;   // 1900-01-01
-export const MAX_JD = 2488070.0;   // 2100-12-31
+export const MAX_JD = 2488434.5;   // 2101-01-01，即覆盖 2100 全年（原值 2488070.0 只到 2100-01-01）
 
 export function jdToDate(jd){ return new Date((jd - 2440587.5) * 86400000); }
 export function dateToJd(date){ return date.getTime() / 86400000 + 2440587.5; }

@@ -2,12 +2,17 @@
 import QRCode from 'qrcode';
 import { openModal } from './help.js';
 
-function isLocal(){ return /localhost|127\.0\.0\.1|:8080|:4173|:5173|:8000/.test(location.host); }
+// 只认真正的主机名。不能用端口号判断——:8000 正是本项目的局域网服务端口，
+// 用它做判据会把老师的局域网访问误判成 localhost，从而给出错误的二维码地址。
+function isLocal(){
+  const h = location.hostname;
+  return h==='localhost' || h==='127.0.0.1' || h==='::1' || h==='[::1]';
+}
 
 export function openQRModal(){
   const local = isLocal();
   const origin = (location.origin && location.origin!=='null') ? location.origin : '';
-  const initial = local ? '192.168.1.10:8000' : origin.replace(/^https?:\/\//,'').replace(/\/$/,'');
+  const initial = local ? '' : origin.replace(/^https?:\/\//,'').replace(/\/$/,'');
 
   openModal('qr', `
     <h2>📱 手机扫码访问</h2>

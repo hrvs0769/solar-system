@@ -43,5 +43,20 @@ export async function buildSystem(system, labelRenderer, tier){
   system.starfield = createStarfield(tier.stars); system.starfield.name='starfield';
   system.root.add(system.starfield);
 
+  // 运行时切换画质：天体的云层/大气显隐 + 星场重建（数量变化才重建）
+  let starCount = tier.stars;
+  system.applyTier = (t)=>{
+    system.bodyGroups.forEach(g=>g.userData.setTier?.(t));
+    if(t.stars !== starCount){
+      starCount = t.stars;
+      system.root.remove(system.starfield);
+      system.starfield.geometry.dispose();
+      system.starfield.material.dispose();
+      system.starfield = createStarfield(t.stars);
+      system.starfield.name = 'starfield';
+      system.root.add(system.starfield);
+    }
+  };
+
   return system;
 }

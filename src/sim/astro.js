@@ -94,6 +94,29 @@ export function searchEclipses(fromJd, toJd){
   return list;
 }
 
+// 此刻是否正在发生日食/月食：必须同时满足「朔或望」与「靠近黄白交点」。
+// 仅判断朔望会把每次朔望都误报为食相——交点条件是「为什么不是每月都有日月食」的答案。
+// 阈值依据 2026 年实测：食相峰值 |黄纬|≤0.92°，最近的伪食（2026-03-19 朔）2.28°。
+const ECLIPSE_LAT_LIMIT = 1.5;
+const ECLIPSE_ELONG_LIMIT = 1.5;
+export function eclipseState(jd){
+  const e = helioScene('earth', jd);
+  const el = mag(e) || 1;
+  const sdir = { x:-e.x/el, y:-e.y/el, z:-e.z/el };
+  const g = moonGeoScene(jd);
+  const ml = mag(g) || 1;
+  const mdir = { x:g.x/ml, y:g.y/ml, z:g.z/ml };
+  const latDeg = Math.asin(Math.max(-1, Math.min(1, mdir.y))) * 180/Math.PI;
+  const cosElong = mdir.x*sdir.x + mdir.y*sdir.y + mdir.z*sdir.z;
+  const elongDeg = Math.acos(Math.max(-1, Math.min(1, cosElong))) * 180/Math.PI;
+  const nearNode = Math.abs(latDeg) < ECLIPSE_LAT_LIMIT;
+  return {
+    solar: nearNode && elongDeg < ECLIPSE_ELONG_LIMIT,
+    lunar: nearNode && elongDeg > 180 - ECLIPSE_ELONG_LIMIT,
+    latDeg, elongDeg, sdir, mdir,
+  };
+}
+
 // 查找相位角对应的日期（targetAngle: 0=朔,90=上弦,180=望,270=下弦）
 export function searchPhase(angleDeg, fromJd){
   const d = SearchMoonPhase(angleDeg, jdToDate(fromJd), 365);

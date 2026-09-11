@@ -14,6 +14,17 @@ const SUN_DIST = 0.105;    // 太阳距地球（图示）
 const SUN_R = 0.015;       // 俯视太阳半径
 const R_MOON_EV = 0.05;    // 地球视角月球半径（更大，看得清月相）
 
+// 月相选项图标：朔=全暗、上弦=右半亮、望=全亮、下弦=左半亮（不识字也能作答）
+function phaseIconSvg(angle){
+  const dark = '#232a3a', lit = '#f2f5fa';
+  let body;
+  if(angle === 180) body = `<circle cx="30" cy="30" r="26" fill="${lit}"/>`;
+  else if(angle === 0) body = `<circle cx="30" cy="30" r="26" fill="${dark}"/>`;
+  else if(angle === 90) body = `<circle cx="30" cy="30" r="26" fill="${dark}"/><path d="M30 4 A26 26 0 0 1 30 56 Z" fill="${lit}"/>`;
+  else body = `<circle cx="30" cy="30" r="26" fill="${dark}"/><path d="M30 4 A26 26 0 0 0 30 56 Z" fill="${lit}"/>`;
+  return `<svg viewBox="0 0 60 60" width="56" height="56" aria-hidden="true">${body}<circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,.28)"/></svg>`;
+}
+
 export class MoonPhases extends ModuleBase {
   constructor(ctx){ super(ctx); this.quizState=null; }
   enter(){
@@ -38,6 +49,7 @@ export class MoonPhases extends ModuleBase {
 
     // 平行光（一组沿太阳方向的细线）
     this.rays = new THREE.Group(); this.sceneTop.add(this.rays);
+    this._buildRays();
 
     // 地球→月球视线箭头（虚线 + 箭头锥）
     this.sight = new THREE.Group(); this.sceneTop.add(this.sight);
@@ -85,20 +97,23 @@ export class MoonPhases extends ModuleBase {
         <div class="viewlabel" style="top:60px;left:50%;transform:translateX(-50%);font-size:16px;padding:8px 16px" id="phaseLabel">—</div>
         <div class="viewlabel top-left">俯视：太阳→平行光→月球（永远只亮朝太阳那一半）</div>
         <div class="viewlabel top-right">从地球看月球<br><span style="font-size:12px">（沿左图白色虚线箭头的视线看去）</span></div>
-        <div style="position:absolute;top:120px;left:14px;background:var(--panel-solid);border-radius:var(--radius);max-width:230px;overflow:hidden">
+        <div style="position:absolute;top:120px;left:14px;background:var(--panel-solid);border-radius:var(--radius);max-width:250px;overflow:hidden">
           <button id="mp-why-toggle" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--accent);font-size:13px;padding:8px 10px;cursor:pointer">▸ 为什么月相会变？</button>
           <div id="mp-why-body" style="display:none;padding:0 10px 10px;font-size:12.5px;line-height:1.6;color:var(--text)">
-          月球绕地球<b>公转</b>(29.5天) → 「太阳-地球-月球」<b style="color:#ffd54a">夹角</b>不断变化 → 我们看到的亮面比例变化。<br>
+          <span class="adult-only" id="mp-why-adult">月球绕地球<b>公转</b>(29.5天) → 「太阳-地球-月球」<b style="color:#ffd54a">夹角</b>不断变化 → 我们看到的亮面比例变化。<br>
           <span style="color:var(--muted)">夹角 0°=朔 · 90°=上弦 · 180°=望 · 270°=下弦（轨道上四个蓝点）。</span><br>
-          <span style="color:var(--muted)">月相不是地球影子（那是月食）；月球<b>自转与公转同步</b>，永远同一面朝地球。</span>
+          <span style="color:var(--muted)">月相不是地球影子（那是月食）；月球<b>自转与公转同步</b>，永远同一面朝地球。</span></span>
+          <span class="kid-only" id="mp-why-kid">月球自己不会发光，是太阳照亮了它的一半。它绕着地球转圈圈，我们看到的亮亮的部分就一会儿多、一会儿少。</span>
           </div>
+          <button class="tc-btn speak-btn adult-only" data-speak="#mp-why-adult" style="margin:0 10px 10px;font-size:12px">🔊 朗读</button>
+          <button class="tc-btn speak-btn kid-only" data-speak="#mp-why-kid" style="margin:0 10px 10px;font-size:13px">🔊 读一读</button>
         </div>
-        <div style="position:absolute;bottom:70px;left:14px;display:flex;gap:8px;flex-wrap:wrap;max-width:70vw">
+        <div style="position:absolute;bottom:88px;left:14px;display:flex;gap:8px;flex-wrap:wrap;max-width:70vw">
           <button class="tc-btn" data-preset="0">朔</button><button class="tc-btn" data-preset="90">上弦</button>
           <button class="tc-btn" data-preset="180">望</button><button class="tc-btn" data-preset="270">下弦</button>
           <button class="tc-btn" id="moon-ff">一个月快放</button>
         </div>
-        <div style="position:absolute;bottom:70px;right:14px;display:flex;gap:8px">
+        <div style="position:absolute;bottom:88px;right:14px;display:flex;gap:8px">
           <button class="tc-btn" id="moon-ray">光线</button>
           <button class="tc-btn" id="moon-shadow">地球影子</button>
           <button class="tc-btn" id="moon-quiz">猜一猜</button>
@@ -128,6 +143,7 @@ export class MoonPhases extends ModuleBase {
   }
   exit(){
     this.disposeScene(this.sceneTop); this.disposeScene(this.sceneEarth);
+    this.quizState = null; this._quizViewOnly = false; this._ffActive = false;
   }
 
   goPreset(angle){
@@ -146,26 +162,28 @@ export class MoonPhases extends ModuleBase {
     const targets=[0,90,180,270];
     const angle = targets[Math.floor(Math.random()*4)];
     const jd = searchPhase(angle, this.ctx.clock.jd);
-    this.quizState = { angle, jd, answered:false, revealing:false };
+    this.quizState = { angle, jd, active:true, answered:false, revealing:false };
     this.clockJump(jd);
     this._quizViewOnly = true;
+    const phaseLabel = document.getElementById('phaseLabel');
+    if(phaseLabel) phaseLabel.textContent = '猜一猜：此刻从地球看，月球是？';
     const names={0:'朔（新月）',90:'上弦月',180:'望（满月）',270:'下弦月'};
     const box = document.getElementById('quiz-box');
     const opts = document.getElementById('quiz-opts');
-    opts.innerHTML = ['朔（新月）','上弦月','望（满月）','下弦月'].map(n=>`<button class="tc-btn" data-n="${n}">${n}</button>`).join('');
-    opts.querySelectorAll('[data-n]').forEach(b=>b.addEventListener('click',()=>{
+    opts.innerHTML = targets.map(a=>`<button class="quiz-opt" data-a="${a}">${phaseIconSvg(a)}<span>${names[a]}</span></button>`).join('');
+    opts.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>{
       if(this.quizState.answered) return;
       this.quizState.answered=true;
-      const correct = b.getAttribute('data-n')===names[angle];
-      b.style.background = correct?'var(--ok)':'var(--err)';
-      opts.querySelectorAll('[data-n]').forEach(x=>{ if(x===b)return; x.style.opacity='0.4'; });
+      const correct = +b.getAttribute('data-a')===angle;
+      b.classList.add(correct?'ok':'bad');
+      opts.querySelectorAll('[data-a]').forEach(x=>{ if(x!==b) x.classList.add('dim'); });
       document.getElementById('quiz-result').textContent = correct?'回答正确！太阳照亮半球的朝向与我们的视线角度决定了月相。':'再想想：太阳光从哪个方向照亮月球？';
     }));
     box.style.display='block';
     document.getElementById('quiz-result').textContent='';
   }
   reveal(){
-    this._quizViewOnly=false; this.quizState.revealing=true;
+    this._quizViewOnly=false; this.quizState.active=false; this.quizState.revealing=true;
     document.getElementById('quiz-box').style.display='none';
     document.getElementById('phaseLabel').textContent = '揭晓：'+this.currentPhaseLabel();
     this.ctx.bus.emit('toast',{text:'看好俯视图：月球被照亮的那一半朝向太阳，夹角决定了从地球看到的形状。',level:'info'});
@@ -233,8 +251,18 @@ export class MoonPhases extends ModuleBase {
     // 自转
     this.earthViewMoon.rotation.y=jd;
   }
+  _buildRays(){
+    this.rayLines = [];
+    const mat = new THREE.LineBasicMaterial({ color:0xffd54a, transparent:true, opacity:0.35 });
+    for(let i=0;i<7;i++){
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+      const line = new THREE.Line(geo, mat);
+      this.rays.add(line); this.rayLines.push(line);
+    }
+  }
   _drawRays(sdir){
-    this.rays.clear();
+    if(!isFinite(sdir.x+sdir.y+sdir.z)) return;
     const perp = new THREE.Vector3(-sdir.z, 0, sdir.x).normalize();   // 平面内垂直于光线方向
     const N=7, span=0.16, half=0.22;
     for(let i=0;i<N;i++){
@@ -242,8 +270,10 @@ export class MoonPhases extends ModuleBase {
       const mid = perp.clone().multiplyScalar(off);
       const p0 = mid.clone().addScaledVector(sdir, -half);
       const p1 = mid.clone().addScaledVector(sdir, half);
-      const g2=new THREE.BufferGeometry().setFromPoints([p0,p1]);
-      this.rays.add(new THREE.Line(g2, new THREE.LineBasicMaterial({color:0xffd54a, transparent:true, opacity:0.35})));
+      const pos = this.rayLines[i].geometry.attributes.position;
+      pos.setXYZ(0, p0.x, p0.y, p0.z);
+      pos.setXYZ(1, p1.x, p1.y, p1.z);
+      pos.needsUpdate = true;
     }
   }
   _updateSight(mp){

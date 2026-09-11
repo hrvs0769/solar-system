@@ -28,12 +28,12 @@ ok('任务期时钟冻结', await p.evaluate(()=>window.__SS?.clock?.running===f
 
 const seq=[];
 let okModal=false;
-for(let i=0;i<70;i++){
+for(let i=0;i<420;i++){
   const ph=await p.evaluate(()=>window.__SS?.lunarMission?.phase);
   if(seq[seq.length-1]!==ph) seq.push(ph);
   okModal=await p.evaluate(()=>!!document.getElementById('mission-success'));
   if(okModal) break;
-  await sleep(1200);
+  await sleep(700);
 }
 const expect=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
 ok('阶段序列完整且顺序正确', expect.every(x=>seq.includes(x)) && seq[0]==='COUNTDOWN' && seq[seq.length-1]==='LANDED', JSON.stringify(seq));

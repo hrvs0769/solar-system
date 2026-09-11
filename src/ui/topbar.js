@@ -5,9 +5,7 @@ import { TIERS } from '../sim/quality.js';
 const MODULES = [
   { id:'orbit-view', label:'全景' },
   { id:'moon-phases', label:'月相实验室' },
-  { id:'tides', label:'潮汐' },
   { id:'eclipse', label:'日月食' },
-  { id:'seasons', label:'四季' },
   { id:'satellite', label:'卫星' },
 ];
 

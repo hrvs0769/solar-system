@@ -12,9 +12,7 @@ import { createLabelRenderer } from './scene/labels.js';
 import { textureStore } from './scene/texture-store.js';
 import { OrbitView } from './modules/orbit-view.js';
 import { MoonPhases } from './modules/moon-phases.js';
-import { Tides } from './modules/tides.js';
 import { Eclipse } from './modules/eclipse.js';
-import { Seasons } from './modules/seasons.js';
 import { Satellite } from './modules/satellite.js';
 import { LunarMission } from './modules/lunar-mission.js';
 import { initTopbar } from './ui/topbar.js';
@@ -30,6 +28,10 @@ import { openBookmarksModal, saveCurrentBookmark, applyBookmark } from './ui/boo
 import { openAlmanacModal } from './ui/almanac.js';
 import { captureScreenshot } from './ui/screenshot.js';
 import { maybeShowGuide } from './ui/guide.js';
+import { initKidMode } from './ui/kid-mode.js';
+import { initVoice } from './ui/speech.js';
+import * as music from './ui/music.js';
+import { guardWebGL } from './ui/gl-guard.js';
 import { getPhase, phaseName } from './sim/astro.js';
 import { dateToJd } from './sim/timeutil.js';
 
@@ -48,10 +50,12 @@ async function boot(){
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
   document.getElementById('app').appendChild(renderer.domElement);
+  guardWebGL(renderer);
 
   const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.0001, 1200);
   const clock = new Clock();
-  const quality = new Quality(renderer, (t)=>{ textureStore.setTier(t.id); });
+  const system = {};   // 须在 quality 之前声明：setTier 回调会读它
+  const quality = new Quality(renderer, (t)=>{ textureStore.setTier(t.id); system.applyTier?.(t); });
   // 软件渲染（无独显）→ 直接低档（贴图降采样到约1K）
   try{
     const gl = renderer.getContext();
@@ -62,7 +66,6 @@ async function boot(){
   const labelRenderer = createLabelRenderer();
 
   // —— 系统（全景）场景 ——
-  const system = {};
   await buildSystem(system, labelRenderer, quality.tier);
 
   const cameraRig = new CameraRig(camera, renderer.domElement, {
@@ -83,11 +86,9 @@ async function boot(){
   const orbitView = new OrbitView(ctx);
   ctx.orbitView = orbitView;
   const moonPhases = new MoonPhases(ctx);
-  const tides = new Tides(ctx);
   const eclipse = new Eclipse(ctx);
-  const seasons = new Seasons(ctx);
   const satellite = new Satellite(ctx);
-  const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'tides':tides, 'eclipse':eclipse, 'seasons':seasons, 'satellite':satellite };
+  const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'eclipse':eclipse, 'satellite':satellite };
   const lunarMission = new LunarMission(ctx);
   ctx.lunarMission = lunarMission;
   let current = modules['orbit-view'];
@@ -124,6 +125,7 @@ async function boot(){
 
   // —— UI ——
   initToast(); initTimeControls(ctx); initZoomSlider(ctx); initPlanetMenu(ctx); initInfoPanel(ctx); initAbout(); initTopbar(ctx);
+  initKidMode(ctx); initVoice(); music.initMusic();
   const showHelp = setHelpHandler(ctx);
   document.getElementById('btn-qr')?.addEventListener('click', ()=>openQRModal());
   document.getElementById('btn-bm')?.addEventListener('click', ()=>openBookmarksModal(ctx));
@@ -159,7 +161,7 @@ async function boot(){
       case 'F1': e.preventDefault(); showHelp(); break;
       case 'Escape':
         if(document.fullscreenElement) document.exitFullscreen();
-        else if(document.querySelector('#module-overlay .modal')) closeModal();
+        else if(document.querySelector('#modal-layer .modal')) closeModal();
         break;
       default:
         if(e.code.startsWith('Digit')){ const i=+e.code.slice(5); if(i<FOCUS_INDEX.length){ if(currentId!=='orbit-view') switchModule('orbit-view'); cameraRig.focus(FOCUS_INDEX[i]); bus.emit('body.select',{bodyId:FOCUS_INDEX[i]}); } }
@@ -196,12 +198,12 @@ async function boot(){
     document.getElementById('err-reload')?.addEventListener('click',()=>location.reload());
   };
   const loopBody=(now)=>{
-    const dt = Math.min((now-last)/1000, 0.1); last=now; timeElapsed+=dt;
+    const rawDt=(now-last)/1000; const dt = Math.min(rawDt, 0.1); last=now; timeElapsed+=dt;
     clock.tick(dt);
     astro.beginFrame(clock.jd);
     current.update(dt);
     cameraRig.update(dt);
-    if(lunarMission && lunarMission.active) lunarMission.update(dt);   // 奔月任务（控制相机/对象）
+    if(lunarMission && lunarMission.active) lunarMission.update(Math.min(rawDt, 0.3));   // 奔月任务（控制相机/对象）
     quality.sample(dt);
     // 空闲省电：暂停 + 全景 + 相机静止 + 最近无交互 → 跳过渲染
     const camStr = camera.matrixWorld.elements.join(',') + '|' + cameraRig.controls.target.toArray().join(',');
@@ -228,7 +230,7 @@ async function boot(){
   setTimeout(()=>maybeShowGuide(), 1200);   // 首次打开引导
 
   /* 调试暴露（供截图自检读取渲染/场景状态） */
-  window.__SS = { renderer, get scene(){ return system.scene; }, get camera(){ return camera; }, get starfield(){ return system.starfield; }, cameraRig, clock, quality, bus, get orbitView(){ return orbitView; }, moonPhases, tides, eclipse, seasons, satellite, lunarMission, get currentId(){ return currentId; } };
+  window.__SS = { THREE, renderer, get scene(){ return system.scene; }, get camera(){ return camera; }, get starfield(){ return system.starfield; }, cameraRig, clock, quality, bus, get orbitView(){ return orbitView; }, moonPhases, eclipse, satellite, lunarMission, music, get currentId(){ return currentId; } };
 }
 
 boot().catch(err=>{

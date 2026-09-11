@@ -12,14 +12,14 @@ import { buildSystem } from './scene/build-system.js';
 import { createLabelRenderer } from './scene/labels.js';
 import { OrbitView } from './modules/orbit-view.js';
 import { MoonPhases } from './modules/moon-phases.js';
-import { Tides } from './modules/tides.js';
 import { Eclipse } from './modules/eclipse.js';
-import { Seasons } from './modules/seasons.js';
 import { Satellite } from './modules/satellite.js';
 import { LunarMission } from './modules/lunar-mission.js';
 import { fmtJdLocal, jdToDate, dateToJd } from './sim/timeutil.js';
 import { FACTS } from './data/planet-facts.js';
 import { listBookmarks, saveCurrentBookmark, applyBookmark } from './ui/bookmarks.js';
+import { initVoice } from './ui/speech.js';
+import { guardWebGL } from './ui/gl-guard.js';
 import { KEYS } from './config.js';
 
 const q = id => document.getElementById(id);
@@ -33,10 +33,12 @@ async function boot(){
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
   document.getElementById('app').appendChild(renderer.domElement);
+  guardWebGL(renderer);
 
   const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.0001, 1200);
   const clock = new Clock();
-  const quality = new Quality(renderer, (t)=>{ textureStore.setTier(t.id); });
+  const system = {};   // 须在 quality 之前声明：setTier 回调会读它
+  const quality = new Quality(renderer, (t)=>{ textureStore.setTier(t.id); system.applyTier?.(t); });
   try{
     const gl = renderer.getContext();
     const dbg = gl.getExtension('WEBGL_debug_renderer_info');
@@ -45,7 +47,6 @@ async function boot(){
   }catch(e){}
   const labelRenderer = createLabelRenderer();
 
-  const system = {};
   await buildSystem(system, labelRenderer, quality.tier);
 
   const cameraRig = new CameraRig(camera, renderer.domElement, {
@@ -64,12 +65,10 @@ async function boot(){
 
   const orbitView = new OrbitView(ctx);
   const moonPhases = new MoonPhases(ctx);
-  const tides = new Tides(ctx);
   const eclipse = new Eclipse(ctx);
-  const seasons = new Seasons(ctx);
   const satellite = new Satellite(ctx);
-  const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'tides':tides, 'eclipse':eclipse, 'seasons':seasons, 'satellite':satellite };
-  ctx.mod = { moonPhases, tides, eclipse, seasons, satellite };
+  const modules = { 'orbit-view':orbitView, 'moon-phases':moonPhases, 'eclipse':eclipse, 'satellite':satellite };
+  ctx.mod = { moonPhases, eclipse, satellite };
   const lunarMission = new LunarMission(ctx);
   ctx.lunarMission = lunarMission;
   let current = orbitView, currentId='orbit-view';
@@ -102,10 +101,10 @@ async function boot(){
   const hideBoot=()=>{ const b=document.getElementById("boot-screen"); if(b) b.style.display="none"; };
   renderer.setAnimationLoop((now)=>{
     try{
-      const dt=Math.min((now-last)/1000,0.1); last=now;
+      const rawDt=(now-last)/1000; const dt=Math.min(rawDt,0.1); last=now;
       clock.tick(dt); astro.beginFrame(clock.jd);
       current.update(dt); cameraRig.update(dt); quality.sample(dt);
-      if(lunarMission && lunarMission.active) lunarMission.update(dt);
+      if(lunarMission && lunarMission.active) lunarMission.update(Math.min(rawDt,0.3));
       const camStr = camera.matrixWorld.elements.join(",")+"|"+cameraRig.controls.target.toArray().join(",");
       const idle = !clock.running && currentId==="orbit-view" && !(lunarMission&&lunarMission.active) && camStr===lastCamStr && (now-lastInteract>600);
       lastCamStr = camStr;
@@ -131,6 +130,7 @@ async function boot(){
   buildInfo();                // body.select → 抽屉
   buildModals(ctx);           // about/help/截图/书签/引导
   buildToast();
+  initVoice();
   bus.emit('module.activated', { moduleId:'orbit-view' });
 
   window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); labelRenderer.setSize(window.innerWidth,window.innerHeight); });
@@ -185,9 +185,7 @@ function buildCtx(ctx){
     q('m-planets').classList.toggle('hidden', moduleId!=='orbit-view');
     if(ctl){ const show=moduleId!=='orbit-view'; ctl.style.display=show?'':'none'; if(show) ctl.textContent='收起控件'; }
     if(moduleId==='moon-phases') moonCtx(box, mod.moonPhases, ctx.clock);
-    else if(moduleId==='tides') tidesCtx(box, mod.tides);
     else if(moduleId==='eclipse') eclipseCtx(box, mod.eclipse, ctx.clock);
-    else if(moduleId==='seasons') seasonsCtx(box, mod.seasons, ctx.clock);
     else if(moduleId==='satellite') satelliteCtx(box, mod.satellite);
   });
 }
@@ -238,31 +236,11 @@ function mobileQuiz(box, clock){
   }));
   wireModuleBack(box);
 }
-function tidesCtx(box, td){
-  box.innerHTML = `<div class="row"><button class="m-btn" id="tide-spring">朔望大潮</button><button class="m-btn" id="tide-neap">上下弦小潮</button>${helpRow()}</div>`;
-  box.querySelector('#tide-spring')?.addEventListener('click',()=>td?.preset('spring'));
-  box.querySelector('#tide-neap')?.addEventListener('click',()=>td?.preset('neap'));
-  wireModuleBack(box);
-}
 function eclipseCtx(box, ec){
   const evs = (ec && ec.events) || [];
   box.innerHTML = `<div class="evt-list" style="max-height:26vh"><div class="m-title" style="padding:0 2px 6px">近期日月食（点某条跳到该次）</div>${evs.map((ev,i)=>`<div class="evt" data-i="${i}"><div class="kind">${ev.type==='solar'?'☀️':'🌕'} ${(ev.kind==='annular'?'日环食':ev.kind==='total'?(ev.type==='solar'?'日全食':'月全食'):ev.kind==='partial'?'偏食':'半影月食')}</div><div>${ev.date.toLocaleDateString('zh-CN')}</div></div>`).join('')}
       <div style="margin-top:6px">${helpRow()}</div></div>`;
   box.querySelectorAll('.evt').forEach(el=>el.addEventListener('click',()=>ec?.selectEvent(+el.getAttribute('data-i'))));
-  wireModuleBack(box);
-}
-
-function seasonsCtx(box, se, clock){
-  box.innerHTML = `<div class="row">
-      <button class="m-btn" data-se="6-21">夏至</button><button class="m-btn" data-se="9-23">秋分</button>
-      <button class="m-btn" data-se="12-21">冬至</button><button class="m-btn" data-se="3-20">春分</button>
-      ${helpRow()}</div>`;
-  box.querySelectorAll('[data-se]').forEach(b=>b.addEventListener('click',()=>{
-    const [m,d]=b.getAttribute('data-se').split('-').map(Number);
-    const y=new Date().getUTCFullYear();
-    clock.jump((Date.UTC(y,m-1,d,12))/86400000+2440587.5);
-    bus.emit('toast',{text:`已跳到${b.textContent}（${y}年）`,level:'info'});
-  }));
   wireModuleBack(box);
 }
 
@@ -283,7 +261,10 @@ function buildInfo(){
   bus.on('body.select', ({bodyId})=>{
     const f=FACTS[bodyId]; if(!f) return;
     body.innerHTML = `<h2>${f.emoji} ${f.zh} <small style="color:var(--muted);font-size:.7em">${f.en}</small></h2>
-      <div class="sub">类型：${f.type}</div>
+      <div class="sub adult-only">类型：${f.type}</div>
+      <p class="desc kid-only" id="fact-kid">${f.kid||f.description}</p>
+      <button class="tc-btn speak-btn kid-only" data-speak="#fact-kid" style="margin-top:10px">🔊 读一读</button>
+      <div class="adult-only">
       <table>
         <tr><td>距太阳</td><td>${f.distanceAU>0 ? f.distanceAU.toFixed(3)+' AU' : '—'}</td></tr>
         <tr><td>公转周期</td><td>${typeof f.periodDays==='number'?Math.round(f.periodDays)+' 天':'—'}</td></tr>
@@ -292,9 +273,10 @@ function buildInfo(){
         <tr><td>卫星数</td><td>${f.moons}</td></tr>
         <tr><td>轴倾角</td><td>${f.obliquityDeg}°</td></tr>
       </table>
-      <p class="desc">${f.description}</p>
+      <p class="desc" id="fact-desc">${f.description}</p>
       ${f.faq?`<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(90,160,255,.08)">${f.faq.map(x=>`<p style="margin-bottom:6px;font-size:14px"><b style="color:var(--accent2)">❓ ${x.q}</b><br><span style="color:var(--muted)">${x.a}</span></p>`).join('')}</div>`:''}
-      ${f.reviewStatus==='pending'?'<p class="review">⚠️ 科普文案待老师审校</p>':''}`;
+      <button class="tc-btn speak-btn" data-speak="#fact-desc" style="margin-top:10px">🔊 朗读</button>
+      </div>`;
     panel.classList.add('open');
   });
 }
@@ -309,7 +291,7 @@ function openModal(title, html){
 function buildModals(ctx){
   const HELP = [['空格/点按 ⏸','暂停'],['点按今','回到今天'],['点按 1秒=..','调速'],['单指拖动','旋转视角'],['双指捏合','缩放'],['点行星','查看资料'],['H 键盘','隐藏界面']];
   q('m-help').addEventListener('click',()=>openModal('操作说明', `<table>${HELP.map(([k,d])=>`<tr><td>${k}</td><td>${d}</td></tr>`).join('')}</table>`));
-  q('m-about').addEventListener('click',()=>openModal('关于 · 素材来源', `<p style="color:var(--muted);margin-bottom:10px">数据与素材：astronomy-engine(MIT) · NASA/JPL 行星概况表(PD) · Solar System Scope 贴图(CC BY 4.0，需署名)。</p><p style="color:var(--warn)">科普文案待物理老师审校。</p>`));
+  q('m-about').addEventListener('click',()=>openModal('关于 · 素材来源', `<p style="color:var(--muted)">数据与素材：astronomy-engine(MIT) · NASA/JPL 行星概况表(PD) · Solar System Scope 贴图(CC BY 4.0，需署名)。</p>`));
   q('m-fs').addEventListener('click',()=>{ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen?.(); });
   q('m-prop')?.addEventListener('click',()=>{ const ov=ctx.orbitView || window.__SS?.orbitView; ov?.toggleProportion(); });
   q('m-label')?.addEventListener('click',()=>{ const ov=ctx.orbitView || window.__SS?.orbitView; if(!ov) return; ov.toggleLabels(); const e=q('m-label'); if(e){ e.textContent = ov.labelsVisible?'标签':'标签·关'; e.classList.toggle('off', !ov.labelsVisible); } });
@@ -338,7 +320,7 @@ function buildModals(ctx){
 const GUIDE_KEY='ss-guide-done';
 function maybeShowMobileGuide(){
   if(localStorage.getItem(GUIDE_KEY)) return;
-  const steps=[['欢迎使用','这是手机版 3D 太阳系教学演示：单指旋转、双指捏合缩放、点行星看资料。'],['底部 Tab','切换 全景/月相/潮汐/日月食；月相模块竖屏上下分屏。'],['时间条','⏸ 暂停 · 今 回到今天 · 1秒=… 调速。']];
+  const steps=[['欢迎使用','这是手机版 3D 太阳系教学演示：单指旋转、双指捏合缩放、点行星看资料。'],['底部 Tab','切换 全景/月相/日月食；月相模块竖屏上下分屏。'],['时间条','⏸ 暂停 · 今 回到今天 · 1秒=… 调速。']];
   let i=0;
   const show=()=>{
     const s=steps[i];

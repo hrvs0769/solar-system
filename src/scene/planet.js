@@ -51,8 +51,8 @@ export async function createBodyVisual(body, radiusAU, tier){
   group.userData.body = body;
   group.userData.radiusAU = radiusAU;
   group.userData.setTier = (t)=>{
-    // 档位：贴图分辨率已定；此处仅控制显隐（低档关大气）
     if(atmo) atmo.visible = t.atmosphere!==false;
+    if(clouds) clouds.visible = t.clouds!==false;
   };
   group.userData.setTier(tier);
   return group;

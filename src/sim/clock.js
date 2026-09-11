@@ -21,7 +21,14 @@ export class Clock {
   }
   _clamp(){
     const c = Math.min(Math.max(this.jd, MIN_JD), MAX_JD);
-    if(c !== this.jd){ this.jd = c; bus.emit('toast',{text:'日期已超出支持范围（1900–2100）',level:'warn'}); }
+    if(c !== this.jd){
+      this.jd = c;
+      const now = Date.now();
+      if(now - (this._clampWarnAt || 0) > 4000){
+        this._clampWarnAt = now;
+        bus.emit('toast',{text:'日期已超出支持范围（1900–2100）',level:'warn'});
+      }
+    }
   }
   toggle(){ this.running = !this.running; bus.emit('clock.changed', this.state()); }
   setRate(i){ this.rateIndex = Math.min(Math.max(0, i|0), RATES.length-1); bus.emit('clock.changed', this.state()); }

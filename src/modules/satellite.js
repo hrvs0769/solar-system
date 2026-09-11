@@ -154,12 +154,12 @@ export class Satellite extends ModuleBase {
           <span style="color:var(--muted)">近地轨道约 400-800 公里，一圈约 90 分钟；轨道倾角 51.6°（类国际空间站）。用双指捏合可拉远看整体、拉近看细节。</span>
         </div>
       </div>
-      <div style="position:absolute;bottom:64px;left:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <div style="position:absolute;bottom:88px;left:14px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="tc-btn" id="sat-detail">🔍 看卫星细节</button>
         <button class="tc-btn" id="sat-overview">🌍 看全貌</button>
         <button class="tc-btn" id="sat-back">返回全景</button>
       </div>
-      <div class="viewlabel" id="sat-status" style="position:absolute;bottom:64px;right:14px;border-left-color:var(--accent2);font-size:12.5px">单指转 · 双指捏合缩放</div>
+      <div class="viewlabel" id="sat-status" style="position:absolute;bottom:88px;right:14px;border-left-color:var(--accent2);font-size:12.5px">单指转 · 双指捏合缩放</div>
     </div>`;
     host.querySelector('#sat-detail')?.addEventListener('click',()=>this.setMode('detail'));
     host.querySelector('#sat-overview')?.addEventListener('click',()=>this.setMode('overview'));

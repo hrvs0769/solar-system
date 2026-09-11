@@ -31,10 +31,12 @@
       <div class="tabs" id="tabs">
         <button class="tab active" data-mod="orbit-view">全景</button>
         <button class="tab" data-mod="moon-phases">月相实验室</button>
-        <button class="tab" data-mod="tides">潮汐</button>
         <button class="tab" data-mod="eclipse">日月食</button>
       </div>
       <div class="top-actions">
+        <button class="icon-btn" id="btn-kid" title="儿童模式：字更大、按钮更少、带语音朗读">🌱</button>
+        <button class="icon-btn" id="btn-voice" title="语音朗读">🔊</button>
+        <button class="icon-btn" id="btn-music" title="背景音乐">🎵</button>
         <button class="icon-btn" id="btn-bm" title="教学书签">🔖</button>
         <button class="icon-btn" id="btn-almanac" title="近期天象">🌌</button>
         <button class="icon-btn" id="btn-shot" title="保存画面为图片">📷</button>
@@ -81,7 +83,7 @@
     <div id="toast"></div>
   </div>
 
-  <!-- 模块专用浮层（月相/潮汐/日月食 动态挂载到此处） -->
+  <!-- 模块专用浮层（月相/日月食 动态挂载到此处） -->
   <div id="module-overlay"></div>
 
   <div id="boot-screen"><div class="bc"><div class="spin"></div><div class="t">正在加载宇宙…</div><div class="s">首次使用请稍候，贴图较大</div></div></div>

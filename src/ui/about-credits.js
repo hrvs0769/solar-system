@@ -14,8 +14,7 @@ export function initAbout(){
       <h2>关于 · 素材与数据来源</h2>
       <p style="color:var(--muted);margin-bottom:12px">本软件为课堂 3D 太阳系教学演示，科学数据与天体外观均来自以下公开资源。</p>
       <table>${CREDITS.map(c=>`<tr><td><b>${c.what}</b><br><span style="color:var(--muted)">${c.note}</span></td><td style="width:120px">${c.license}</td></tr>`).join('')}</table>
-      <p style="margin-top:12px;color:var(--muted)">Solar System Scope 贴图依据 <b>CC BY 4.0</b> 协议使用并署名；NASA 内容为公有领域。
-      <p style="color:var(--warn);margin-top:6px">⚠️ 全部科普文案为 AI 起草，须经物理老师审校后方可进入课堂。</p>
+      <p style="margin-top:12px;color:var(--muted)">Solar System Scope 贴图依据 <b>CC BY 4.0</b> 协议使用并署名；NASA 内容为公有领域。</p>
       <button class="close-btn" data-close>我已知晓</button>`);
   });
 }
