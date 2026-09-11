@@ -622,11 +622,11 @@ function buildPlume(sc=1,vacuum=false){
   const g=new THREE.Group();
   // 大气层内：实心橙白焰（亮天空下也要看得见）；真空：淡蓝白加色焰（真实姿态发动机几乎无烟）
   const core=new THREE.Mesh(new THREE.ConeGeometry((vacuum?0.008:0.015)*sc,(vacuum?0.075:0.115),24,1,true),
-    vacuum ? new THREE.MeshBasicMaterial({map:flameTex(), transparent:true, opacity:.85, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, color:0xbfe0ff})
+    vacuum ? new THREE.MeshBasicMaterial({map:flameTex(), transparent:true, opacity:.55, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, color:0xbfe0ff})
            : new THREE.MeshBasicMaterial({map:flameTex(), transparent:true, depthWrite:false, side:THREE.DoubleSide, blending:THREE.NormalBlending, color:0xffffff}));
   core.position.y=(vacuum?-0.0375:-0.0575);
   const glow=new THREE.Mesh(new THREE.ConeGeometry((vacuum?0.020:0.030)*sc,(vacuum?0.10:0.14),20,1,true),
-    new THREE.MeshBasicMaterial({map:glowTex(), transparent:true, opacity:.55, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, color:(vacuum?0x7fc0ff:0xff9a3c)}));
+    new THREE.MeshBasicMaterial({map:glowTex(), transparent:true, opacity:(vacuum?0.38:0.55), depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, color:(vacuum?0x7fc0ff:0xff9a3c)}));
   glow.position.y=(vacuum?-0.045:-0.062);
   const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.019*sc,0.013*sc,0.012,18,1,true),
     new THREE.MeshBasicMaterial({color:(vacuum?0xcfe6ff:0xffe0b0), transparent:true, opacity:.75, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending}));
@@ -695,7 +695,7 @@ export class LunarMission extends ModuleBase {
     sc.add(new THREE.HemisphereLight(0xbcd8ff, 0x4d4a3e, 0.5));
     sc.add(new THREE.AmbientLight(0xdfe9ff, 0.14));
     this.launchFill=new THREE.PointLight(0xffe9cc, 0.9, 2.4, 2); this.launchFill.position.set(-0.5,1.35,-0.9); sc.add(this.launchFill);
-    this.moonFill=new THREE.PointLight(0xf2e8da, 1.6, 8, 2); this.moonFill.position.set(MD-2.5,1.6,1.4); sc.add(this.moonFill);
+    this.moonFill=new THREE.PointLight(0xf2e8da, 2.1, 10, 2); this.moonFill.position.set(MD-2.5,1.6,1.4); sc.add(this.moonFill);
 
     // —— 天空：渐变 + 太阳光晕 + 地平线雾霭（升空后淡出为太空黑）——
     this.skyMat=new THREE.ShaderMaterial({
@@ -782,7 +782,8 @@ export class LunarMission extends ModuleBase {
     // —— 火箭 / 助推器 / 嫦娥 / 尾焰 / 烟云 ——
     this.rocket=buildRocket(); this.boosters=buildBoosters(); this.change=buildChange();
     this.plumeR=buildPlume(); this.plumeC=buildPlume(1.0,true); this.steam=buildSteam(); this.burst=buildBurst();
-    this.rocket.userData.stage1.add(this.plumeR); this.change.add(this.plumeC); this.plumeC.scale.setScalar(2.6);
+    this.rocket.userData.stage1.add(this.plumeR);
+    this.change.userData.lander.add(this.plumeC); this.plumeC.position.set(0,-0.030,0); this.plumeC.scale.setScalar(1.35);
     [this.rocket,this.boosters,this.change,this.steam,this.burst].forEach(o=>{ this.scene.add(o); });
     this.linePark=this._mkLine(k=>this._park(k*Math.PI*2), 0x7fd0ff);
     this.lineTransfer=this._mkLine(k=>this._transfer(k*Math.PI), 0xffd54a);
@@ -1223,10 +1224,14 @@ export class LunarMission extends ModuleBase {
         pos.copy(this.change.position).add(new THREE.Vector3(-0.52*r, 0.40*r, -0.76*r));
         tgt.copy(this.change.position); U.set(0,1,0); break; }
       case 'LOI': {
-        pos.copy(this.change.position).add(new THREE.Vector3(0.30, 0.52, -0.42)); tgt.copy(this.change.position); U.set(0,1,0); break; }
+        const mc=new THREE.Vector3(MD,0,0), out=this.change.position.clone().sub(mc).normalize();
+        pos.copy(this.change.position).addScaledVector(out,0.50).add(new THREE.Vector3(0,0.30,0));
+        tgt.copy(this.change.position).lerp(mc,0.22); U.set(0,1,0); break; }
       case 'LUNAR_ORBIT': {
-        // 缓慢环绕：相机沿月球轨道外侧缓慢跟拍, 镜头有"意味"
-        pos.copy(this.change.position).add(new THREE.Vector3(0.34, 0.46, -0.56)); tgt.copy(this.change.position); U.set(0,1,0); break; }
+        // 机位挂在月心→卫星的径向外侧：卫星绕月时，月球始终留在卫星背后(而不是甩出画面)
+        const mc=new THREE.Vector3(MD,0,0), out=this.change.position.clone().sub(mc).normalize();
+        pos.copy(this.change.position).addScaledVector(out,0.64).add(new THREE.Vector3(0,0.34,0));
+        tgt.copy(this.change.position).lerp(mc,0.30); U.set(0,1,0); break; }
       case 'LANDING': case 'LANDED': {
         // 月面水平观察视角(同发射前地面机位): 站在月面低角度仰视登月器缓缓降落
         const site2=this._landSite||new THREE.Vector3(MD-RM-0.045,0,0);
@@ -1308,8 +1313,8 @@ export class LunarMission extends ModuleBase {
     this._landUp=wp.clone().sub(mc).normalize();                                 // 月面"上"方向(背离月心)
     this._landSite=mc.clone().addScaledVector(this._landUp, RM+0.045);           // 落点(着陆器原点, 腿刚好触地)
     this._landTangent=this.sunDir.clone().addScaledVector(this._landUp,-this.sunDir.dot(this._landUp)).normalize();  // 向阳侧切向
-    ch.remove(lander); this.scene.add(lander); lander.position.copy(wp);
-    ch.remove(this.plumeC); lander.add(this.plumeC); this._landerStart=wp.clone();
+    ch.remove(lander); this.scene.add(lander); lander.position.copy(wp);   // 尾焰已挂在着陆器上，随它一起分离
+    this._landerStart=wp.clone();
     if(this.lunarPatch){
       // 让球冠的 UV 极点偏离着陆点约 38°：否则极点处的贴图压缩会在落点周围拉出放射状条纹
       const side=new THREE.Vector3().crossVectors(this._landUp,this._landTangent).normalize();
