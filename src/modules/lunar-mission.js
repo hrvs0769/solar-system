@@ -860,7 +860,7 @@ export class LunarMission extends ModuleBase {
   }
   _reveal(line, frac){ if(line&&line.geometry) line.geometry.setDrawRange(0, Math.max(1, Math.floor(frac*201))); }
 
-  _setPhase(p){ this.phase=p; this.pt=0; this._camEaseT=0; this._enterPhase(p); }
+  _setPhase(p){ this.phase=p; this.pt=0; this._camEaseT=0; this._camEaseDur=0; this._enterPhase(p); }
   _enterPhase(p){
     if(p==='COUNTDOWN'){ this.rocket.visible=true; this.boosters.visible=true; this.change.visible=false; this.steam.visible=false; this.plumeR.visible=false; this.plumeC.visible=false;
       this._fairK=0; this._applyFairing(0);
@@ -1260,7 +1260,10 @@ export class LunarMission extends ModuleBase {
     // 阶段切换后的 1.1s 内放慢机位过渡(避免每个转场都像"甩镜头")，
     // 其余时间快速跟随；注视点几乎实时跟上，否则快速运动的卫星会被甩出画面。
     this._camEaseT=(this._camEaseT||0)+dt;
-    const tau=this._camEaseT<1.1 ? 0.42 : 0.16;
+    // 阶段切换的过渡时长按"机位跳得多远"自适应：小切换 1.1s，大切换(如切到月面)最长 2.6s，
+    // 否则大跨度转场会被压缩成一次快甩。
+    if(!(this._camEaseDur>0)) this._camEaseDur=Math.max(1.0, Math.min(2.0, 0.8+this._cam.pos.distanceTo(d.pos)*0.40, (DUR[this.phase]||1)*0.45));
+    const tau=this._camEaseT<this._camEaseDur ? 0.42 : 0.16;
     this._cam.pos.lerp(d.pos, Math.min(1, dt/tau));
     this._cam.tgt.lerp(d.tgt, Math.min(1, dt*18));
     this._cam.up.lerp(d.up, Math.min(1, dt*6));

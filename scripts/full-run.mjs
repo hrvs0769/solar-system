@@ -8,6 +8,10 @@ import { extname, join, resolve } from 'path';
 
 const ROOT = process.env.DIST || 'dist-offline';
 const OUT = process.env.OUT || 'shots';
+const PAGE = process.env.PAGE || 'index.html';        // PAGE=mobile.html 可跑手机版
+const MOBILE = PAGE.includes('mobile');
+const JUMP_K = +(process.env.JUMP_K || 2.5);          // 超过中位数多少倍算可疑
+const MAX_JUMPS = process.env.MAX_JUMPS === undefined ? -1 : +process.env.MAX_JUMPS;  // >=0 时超限即失败(退出码 1)
 const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const W = +(process.env.SHOT_W || 640), H = +(process.env.SHOT_H || 360);
 const EVERY = +(process.argv[2] || 800);
@@ -20,13 +24,13 @@ const server = http.createServer(async (req, res) => {
   catch { res.statusCode = 404; res.end('nf'); }
 });
 server.listen(0);
-const base = `http://localhost:${server.address().port}/index.html`;
+const base = `http://localhost:${server.address().port}/${PAGE}`;
 await mkdir(OUT, { recursive: true });
 
 const browser = await puppeteer.launch({
   executablePath: CHROME, headless: 'new',
   args: ['--no-sandbox', '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--hide-scrollbars'],
-  defaultViewport: { width: W, height: H },
+  defaultViewport: MOBILE ? { width: 390, height: 844, isMobile: true, hasTouch: true } : { width: W, height: H },
 });
 const page = await browser.newPage();
 const errors = []; page.on('pageerror', e => errors.push(e.message));
@@ -43,7 +47,7 @@ const frames = [];
 const phaseTimes = [];
 let lastPhase = null;
 const t0 = Date.now();
-await page.evaluate(() => window.__SS.lunarMission.start());
+await page.evaluate((isMobile) => { const b=document.getElementById(isMobile?'m-mission':'vt-mission'); if(b) b.click(); else window.__SS.lunarMission.start(); }, MOBILE);
 while (Date.now() - t0 < 240000) {
   const st = await page.evaluate(() => ({
     phase: window.__SS?.lunarMission?.phase,
@@ -52,7 +56,9 @@ while (Date.now() - t0 < 240000) {
   }));
   if (st.phase !== lastPhase) { phaseTimes.push({ phase: st.phase, t: +((Date.now() - t0) / 1000).toFixed(1) }); lastPhase = st.phase; }
   const file = join(OUT, `run_${String(frames.length).padStart(3, '0')}.png`);
-  const b64 = await page.screenshot({ path: file, encoding: 'base64' });
+  // 注意：encoding:'base64' 时 puppeteer 不会再写 path，必须自己落盘
+  const b64 = await page.screenshot({ encoding: 'base64' });
+  await writeFile(file, Buffer.from(b64, 'base64'));
   // 与上一帧做灰度差分：任务全程没有剪辑，任何"跳变"都会表现为异常大的帧间差
   const diff = await page.evaluate(async (b64) => {
     const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
@@ -78,8 +84,17 @@ console.log('阶段耗时：' + durs.map(d => `${d.phase} ${d.dur}s`).join('  ')
 // 阶段边界跳变检查：全程无剪辑，帧间差应平滑；超过中位数 2.5 倍即标记出来人工复核
 const diffs = frames.filter(f => f.diff !== null).map(f => f.diff).sort((a, b) => a - b);
 const med = diffs[Math.floor(diffs.length / 2)];
-const jumps = frames.filter(f => f.diff !== null && f.diff > Math.max(1.5, med * 2.5));
+// 真跳变 = 孤立尖峰：自身明显大，且比前后两帧都大得多（平滑运镜会连续几帧都大，不算）
+const jumps = frames.filter((f, i) => {
+  if (f.diff === null || f.diff <= Math.max(1.5, med * JUMP_K)) return false;
+  const prev = Math.max(frames[i-1]?.diff ?? 0, frames[i-2]?.diff ?? 0);
+  return f.diff > prev * 1.8;
+});
 console.log(`帧间差中位数 ${med.toFixed(2)}；可疑跳变 ${jumps.length} 处` + (jumps.length ? '：' + jumps.map(f => `${f.t}s(${f.phase}) Δ${f.diff}`).join('  ') : ''));
+if (MAX_JUMPS >= 0 && jumps.length > MAX_JUMPS) {
+  console.log(`❌ 可疑跳变 ${jumps.length} 处 > 允许 ${MAX_JUMPS} 处`);
+  process.exitCode = 1;
+}
 
 const cols = 6, rows = Math.ceil(frames.length / cols);
 const html = `<!doctype html><meta charset="utf-8"><body style="margin:0;background:#05070d;font:11px/1.35 -apple-system,sans-serif;color:#cfd8e6">
