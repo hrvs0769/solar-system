@@ -1091,7 +1091,7 @@ export class LunarMission extends ModuleBase {
         this.rocket.children.forEach(c=>{ if(c.material){ c.material.transparent=true; c.material.opacity=f; } });
         if(f<=0) this.rocket.visible=false;
         this.rocket.position.copy(this._park(Math.PI)).add(new THREE.Vector3(-this._transSepT*0.06, -this._transSepT*0.02, 0));  // 火箭缓缓落后
-        const nu=Math.PI*ke;
+        const nu=this._nuFromM(Math.PI*ke);          // 平近点角 → 真近点角：近快远慢(与速度箭头一致)
         this.change.position.copy(this._transfer(nu));
         const nuP=Math.max(nu-0.02,0.001);
         const vel=this._transfer(nu).sub(this._transfer(nuP)).normalize();
@@ -1220,7 +1220,7 @@ export class LunarMission extends ModuleBase {
       case 'TRANSFER': {
         // 长推近：开始广(带地球+月球+椭圆参照=空间线), 越近月球越逼近
         const k=Math.min(this.pt/DUR.TRANSFER,1);
-        const r=2.15 - k*1.80;   // 大远景(地球+椭圆+月球同框) → 一路推近到卫星
+        const r=2.15 - 1.80*Math.pow(k,0.55);   // 大远景(地球+椭圆+月球同框) → 前段更快推近，深空巡航时卫星不至于太小
         pos.copy(this.change.position).add(new THREE.Vector3(-0.52*r, 0.40*r, -0.76*r));
         tgt.copy(this.change.position); U.set(0,1,0); break; }
       case 'LOI': {
