@@ -8,17 +8,19 @@ import { ModuleBase } from './module-base.js';
 import { isKidMode } from '../ui/kid-mode.js';
 
 // —— 电影舞台比例（非 AU，自洽）——
-const RE=1.0, RM=0.27, MD=15.0, PARK=1.35, LUNAR_R=0.6, LUNAR_ORBITS=2;
-const ORDER=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
-const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:6.5, SPHERE:9, STAGE_SEP:4, EARTH_ORBIT:9, TRANSFER:14, LOI:3, LUNAR_ORBIT:8, LANDING:8.5 };
-const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'分级脱离', EARTH_ORBIT:'地球轨道', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
-const PHASE_NAME_KID={ COUNTDOWN:'倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'看看地球', STAGE_SEP:'助推器分离', EARTH_ORBIT:'绕地球飞', TRANSFER:'飞向月球', LOI:'踩刹车', LUNAR_ORBIT:'绕月飞行', LANDING:'准备降落', LANDED:'着陆月球' };
+const RE=1.0, RM=0.27, MD=15.0, PARK=1.35, LUNAR_R=0.6, LUNAR_ORBITS=1;
+const ORDER=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT','DEPLOY','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
+const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:6.5, SPHERE:9, STAGE_SEP:4, EARTH_ORBIT:15, DEPLOY:5.5, TRANSFER:10, LOI:3, LUNAR_ORBIT:11, LANDING:8.5 };
+const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'分级脱离', EARTH_ORBIT:'地球轨道', DEPLOY:'上面级分离 · 嫦娥展开', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
+const PHASE_NAME_KID={ COUNTDOWN:'倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'看看地球', STAGE_SEP:'助推器分离', EARTH_ORBIT:'绕地球飞', DEPLOY:'嫦娥出舱啦', TRANSFER:'飞向月球', LOI:'踩刹车', LUNAR_ORBIT:'绕月飞行', LANDING:'准备降落', LANDED:'着陆月球' };
 const WHY={ COUNTDOWN:'一切就绪，等待点火', IGNITION:'火焰 + 导流槽水雾喷涌', LIFTOFF:'突破大气，逐渐摆脱地球引力',
   SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'分级脱离：多级更省燃料', EARTH_ORBIT:'一级分离 → 抛整流罩 → 绕地球一圈获得入轨速度',
+  DEPLOY:'上面级分离 → 嫦娥展开太阳翼与天线 · 为什么展开？要在太空里晒太阳发电',
   TRANSFER:'上面级分离，嫦娥卫星出舱 · 为什么不是直线飞？沿椭圆最省燃料', LOI:'为什么必须制动？不减速会飞过月球', LUNAR_ORBIT:'嫦娥绕月探测，寻找落点',
   LANDING:'反推减速 → 缓缓降落', LANDED:'已在月球表面' };
 const WHY_KID={ COUNTDOWN:'数到零，火箭就出发', IGNITION:'点火！屁股后面喷出大火', LIFTOFF:'飞起来啦，越飞越高',
   SPHERE:'看，地球原来是个大圆球', STAGE_SEP:'用完的助推器掉下去，火箭变轻了', EARTH_ORBIT:'保护罩没用了就扔掉 · 绕地球转一圈跑得更快',
+  DEPLOY:'嫦娥从火箭里出来啦，张开翅膀晒太阳',
   TRANSFER:'离开地球，向月球飞去 · 走弯路反而更省力', LOI:'快到月球了，要踩刹车，不然会飞过头', LUNAR_ORBIT:'绕着月球转圈圈，找地方降落',
   LANDING:'慢慢往下落，别摔着', LANDED:'稳稳地停在月球上' };
 
@@ -531,7 +533,7 @@ function buildRocket(){
   // 载荷适配器（整流罩抛掉后可见）
   const adapter=new THREE.Mesh(new THREE.CylinderGeometry(RC*0.80,RC*0.95,0.010,28), dark); adapter.position.y=0.1425; adapter.castShadow=true; stage2.add(adapter);
   const payl=new THREE.Mesh(new THREE.BoxGeometry(0.014,0.014,0.016), new THREE.MeshStandardMaterial({map:goldTex(), metalness:.7, roughness:.45, bumpMap:mliBump(), bumpScale:0.0016}));
-  payl.position.y=0.1545; payl.castShadow=true; stage2.add(payl);
+  payl.position.y=0.1545; payl.castShadow=true; stage2.add(payl); g.userData.payl=payl;
   // 整流罩：两瓣（沿 YZ 面对开，铰链在根部）
   fairMat.side=THREE.DoubleSide;
   const fairL=new THREE.Group(), fairR=new THREE.Group();
@@ -573,19 +575,26 @@ function buildChange(){
   const dark=new THREE.MeshStandardMaterial({color:0x53585f, metalness:.8, roughness:.4});
   const solar=new THREE.MeshStandardMaterial({map:solarTex(), metalness:.35, roughness:.55, side:THREE.DoubleSide});
   const svc=new THREE.Mesh(new THREE.BoxGeometry(0.045,0.045,0.05), gold); svc.position.y=0.045; svc.castShadow=true; g.add(svc);
+  // 天线组（收拢时贴在星体侧后方，入轨后抬起）
+  const dishPivot=new THREE.Group(); dishPivot.position.set(0,0.062,0); g.add(dishPivot);
   const dish=new THREE.Mesh(dishGeo(0.024,0.008,28), new THREE.MeshStandardMaterial({color:0xd8dce2, metalness:.55, roughness:.28, side:THREE.DoubleSide}));
-  dish.position.set(0,0.076,0); dish.castShadow=true; g.add(dish);
-  const feed=new THREE.Mesh(new THREE.ConeGeometry(0.0035,0.006,10), dark); feed.position.set(0,0.0175,0); g.add(feed);   // 馈源
-  const feedRod=new THREE.Mesh(new THREE.CylinderGeometry(0.0009,0.0009,0.010,8), metal); feedRod.position.set(0,0.012,0); g.add(feedRod);
-  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.0016,0.0016,0.024,8), metal); mast.position.set(0,0.064,0); g.add(mast);
-  [[-1],[1]].forEach(([s])=>{ const wing=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.0045,0.03), solar); wing.position.x=s*0.062; wing.position.y=0.045; wing.castShadow=true; g.add(wing);
-    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.0016,0.0016,0.022,8), metal); arm.rotation.z=Math.PI/2; arm.position.set(s*0.033,0.045,0); g.add(arm);
+  dish.position.set(0,0.014,0); dish.castShadow=true; dishPivot.add(dish);
+  const feed=new THREE.Mesh(new THREE.ConeGeometry(0.0035,0.006,10), dark); feed.position.set(0,-0.0445,0); dishPivot.add(feed);
+  const feedRod=new THREE.Mesh(new THREE.CylinderGeometry(0.0009,0.0009,0.010,8), metal); feedRod.position.set(0,-0.050,0); dishPivot.add(feedRod);
+  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.0016,0.0016,0.024,8), metal); mast.position.set(0,0.002,0); dishPivot.add(mast);
+  const omni=[];
+  for(let i=0;i<2;i++){ const t=(i?1:-1)*0.012; const pv=new THREE.Group(); pv.position.set(t,0.062,0.012); dishPivot.add(pv);
+    const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.0006,0.0006,0.018,6), metal); rod.position.y=0.008; pv.add(rod);
+    const tip=new THREE.Mesh(new THREE.SphereGeometry(0.0016,8,6), metal); tip.position.y=0.017; pv.add(tip); omni.push(pv); }
+  // 太阳翼：铰链在星体两侧，发射时收拢贴体，入轨后展开（并带"从盒子里滑出"的伸缩感）
+  const wings=[];
+  [[-1],[1]].forEach(([sd])=>{ const pv=new THREE.Group(); pv.position.set(sd*0.028,0.045,0); pv.userData.s=sd; g.add(pv);
+    const wing=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.0045,0.03), solar); wing.position.x=sd*0.034; wing.castShadow=true; pv.add(wing);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.0016,0.0016,0.022,8), metal); arm.rotation.z=Math.PI/2; arm.position.set(sd*0.005,0,0); pv.add(arm);
     [[1,-1],[1,1]].forEach(([ex,ez])=>{ const fr=new THREE.Mesh(new THREE.BoxGeometry(0.080,0.0052,0.0016), dark);
-      fr.position.set(s*0.062,0.045,ez*0.0148); g.add(fr);
-      const fr2=new THREE.Mesh(new THREE.BoxGeometry(0.0016,0.0052,0.030), dark); fr2.position.set(s*0.062+ex*0.040,0.045,0); g.add(fr2); }); });
-  for(let i=0;i<2;i++){ const t=(i?1:-1)*0.012;                                                      // 全向天线
-    const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.0006,0.0006,0.018,6), metal); rod.position.set(t,0.076,0.012); g.add(rod);
-    const tip=new THREE.Mesh(new THREE.SphereGeometry(0.0016,8,6), metal); tip.position.set(t,0.085,0.012); g.add(tip); }
+      fr.position.set(sd*0.034,0,ez*0.0148); pv.add(fr);
+      const fr2=new THREE.Mesh(new THREE.BoxGeometry(0.0016,0.0052,0.030), dark); fr2.position.set(sd*0.034+ex*0.040,0,0); pv.add(fr2); });
+    wings.push(pv); });
   const st=new THREE.Mesh(new THREE.BoxGeometry(0.006,0.006,0.005), dark); st.position.set(0.016,0.062,0.014); g.add(st);   // 星敏感器
   for(let i=0;i<4;i++){ const a=i*Math.PI/2+Math.PI/4; const th=new THREE.Mesh(bellGeo(0.0012,0.0032,0.009,12), dark);
     th.position.set(Math.cos(a)*0.016,0.019,Math.sin(a)*0.016); g.add(th); }
@@ -614,7 +623,7 @@ function buildChange(){
       foot.position.set(Math.cos(a)*0.050,-0.0535,Math.sin(a)*0.050); foot.castShadow=true; lander.add(foot); } }
   const noz=new THREE.Mesh(bellGeo(0.004,0.011,0.02,16), dark); noz.position.y=-0.026; lander.add(noz);
   g.add(lander);
-  g.userData.lander=lander; g.userData.svc=svc;
+  g.userData.lander=lander; g.userData.svc=svc; g.userData.wings=wings; g.userData.dishPivot=dishPivot; g.userData.omni=omni;
   return g;
 }
 // —— 尾焰：贴图湍流焰芯（实心可读） + 加色外发光 + 喷口冲击环 ——
@@ -881,19 +890,49 @@ export class LunarMission extends ModuleBase {
         [0,1,2,3].forEach(i=>{ const a=i*Math.PI/2+Math.PI/4;
           this._spawnBurst(rp.clone().add(new THREE.Vector3(Math.cos(a)*orb, 0.010, Math.sin(a)*orb)), 60, 0.26); }); } }
     if(p==='EARTH_ORBIT'){ this.change.visible=false; this.rocket.visible=true; if(this.boosters) this.boosters.visible=false; this.linePark.visible=true;
-      // 绕地球时开放用户手动视角(拖动/捏合绕火箭观察)
-      const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls;
-      if(c){ this._saveMinMax={min:c.minDistance,max:c.maxDistance}; c.minDistance=0.5; c.maxDistance=6; c.target.copy(this.rocket.position); { const rp=this.rocket.position, out=rp.clone().normalize(), tan=new THREE.Vector3(0,0,1).cross(out).normalize();
-          this.ctx.camera.position.copy(rp).addScaledVector(out,0.56).addScaledVector(tan,-0.46); } c.enabled=true; this._freeCam=true; } }
+      // 绕地球开放手动视角，但延迟 1.2s 交接：先让导演机位平滑到位，避免进入瞬间硬切
+      { const rp=this.rocket.position, out=rp.clone().normalize(), tan=new THREE.Vector3(0,0,1).cross(out).normalize();
+        const dir=new THREE.Vector3().addScaledVector(out,0.30).addScaledVector(tan,-0.18).add(new THREE.Vector3(0,0,0.62));
+        this._armFreeCam(this.rocket, dir, 0.71, 0.5, 6, 1.2); } }
     if(p==='TRANSFER'){ if(this._freeCam){ const c=this.ctx.cameraRig.controls; if(c){ c.enabled=false; if(this._saveMinMax){ c.minDistance=this._saveMinMax.min; c.maxDistance=this._saveMinMax.max; } } this._freeCam=false; } }
     if(p==='TRANSFER'){ this.change.visible=true; this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; this._transSepT=0; }
+    if(p==='DEPLOY'){ this._freeArm=null; this.change.visible=true; this._applyDeploy(0);
+      if(this.rocket.userData.payl) this.rocket.userData.payl.visible=false; }
     if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); if(this.speedArrows) this.speedArrows.visible=false; }
-    if(p==='LUNAR_ORBIT'){ this.plumeC.visible=false; this._lam=0; this._reveal(this.lineLunar,0); this.lineTransfer.visible=false; }
-    if(p==='LANDING'){ this._detachLander(); this.plumeC.visible=true; if(this.plumeC) this.plumeC.scale.setScalar(0.8); this.lineLunar.visible=false; this.linePark.visible=false; }
+    if(p==='LUNAR_ORBIT'){ this.plumeC.visible=false; this._lam=0; this._reveal(this.lineLunar,0); this.lineTransfer.visible=false;
+      // 绕月期间同样开放拖动观察（与绕地球一致）
+      const out=this.change.position.clone().sub(new THREE.Vector3(MD,0,0)).normalize();
+      this._armFreeCam(this.change, new THREE.Vector3(out.x*0.40, out.y*0.40+0.22, 0.52), 0.72, 0.12, 1.6, 1.0); }
+    if(p==='LANDING'){ this._freeArm=null; if(this._freeCam){ const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls;
+        if(c){ c.enabled=false; if(this._saveMinMax){ c.minDistance=this._saveMinMax.min; c.maxDistance=this._saveMinMax.max; } } this._freeCam=false; }
+      this._detachLander(); this.plumeC.visible=true; if(this.plumeC) this.plumeC.scale.setScalar(0.8); this.lineLunar.visible=false; this.linePark.visible=false; }
     if(p==='LANDED'){ this.plumeC.visible=false; this._freeTargetObj=this.change.userData.lander; this._showSuccess(); }
   }
   _hideLines(){ [this.linePark,this.lineTransfer,this.lineLunar].forEach(l=>{ if(l){ l.visible=false; if(l.geometry) l.geometry.setDrawRange(0,0); } }); if(this.speedArrows) this.speedArrows.visible=false; }
   _fadeWenchang(a){ this._fadeGroup(this.siteGroup, Math.max(0,Math.min(1,a))); }
+  // 自由视角延迟交接：先由导演机位平滑到位(at 秒后)，再启用手动控制，避免进入瞬间硬切
+  _armFreeCam(obj, dir, dist, minD, maxD, at=1.0){ this._freeArm={ obj, dir:dir.clone().normalize(), dist, min:minD, max:maxD, at }; }
+  _tryArmFreeCam(){
+    const a=this._freeArm; if(!a||this._freeCam) return;
+    if(this.pt<a.at) return;
+    const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls; if(!c){ this._freeArm=null; return; }
+    if(!this._saveMinMax) this._saveMinMax={ min:c.minDistance, max:c.maxDistance };
+    c.minDistance=a.min; c.maxDistance=a.max;
+    a.obj.getWorldPosition(c.target);
+    this.ctx.camera.position.copy(c.target).addScaledVector(a.dir, a.dist);
+    c.enabled=true; this._freeCam=true; this._freeTargetObj=a.obj; this._freeArm=null;
+  }
+  // —— 嫦娥展开：太阳翼从贴体转出并伸出，天线抬起 ——
+  _applyDeploy(a){
+    const u=this.change&&this.change.userData; if(!u||!u.wings) return;
+    const t=Math.max(0,Math.min(1,a));
+    const wing=Math.max(0,Math.min(1,t/0.65)), ext=Math.max(0,Math.min(1,(t-0.15)/0.85));
+    u.wings.forEach(pv=>{ const sd=pv.userData.s||1;
+      pv.rotation.z=-sd*Math.PI*0.5*(1-wing);
+      pv.scale.x=0.34+0.66*ext; });
+    if(u.dishPivot) u.dishPivot.rotation.x=-1.30*(1-Math.max(0,Math.min(1,(t-0.25)/0.75)));
+    if(u.omni) u.omni.forEach((o,i)=>{ o.rotation.z=(i?1:-1)*1.25*(1-Math.max(0,Math.min(1,(t-0.35)/0.65))); });
+  }
   // —— 整流罩分离（SPHERE 中后段两瓣对开并落后淡出）——
   _applyFairing(a){
     const u=this.rocket&&this.rocket.userData; if(!u||!u.fairL) return;
@@ -1086,14 +1125,23 @@ export class LunarMission extends ModuleBase {
         this._pointUp(this.rocket, new THREE.Vector3(0,1,0).lerp(this._tangentPark(th), turn));
         this._reveal(this.linePark, k);
         break; }
-      case 'TRANSFER': {
-        // TLI 点(-X): 上面级分离, 嫦娥卫星缓缓出舱, 火箭落后淡出, 再沿转移椭圆奔月
-        if(this._transSepT===undefined) this._transSepT=0;
-        this._transSepT+=dt;
-        const f=Math.max(0, 1-this._transSepT/2.6);   // 火箭(上面级)缓缓淡出
+      case 'DEPLOY': {
+        // TLI 点(-X)：上面级分离 → 嫦娥从火箭顶部移出 → 太阳翼/天线展开 → 上面级落后淡出
+        // 关键：上面级的"顶端"对齐 TLI 点，嫦娥就停在这个点上展开；上面级整体向后（-dir）退开并淡出，
+        // 于是画面读起来是"火箭退场、嫦娥亮出翅膀"，而不是两者重叠穿模。
+        const rp=this._park(Math.PI), dir=this._tangentPark(Math.PI);
+        const back=0.145+ease(k)*0.60;
+        this.rocket.position.copy(rp).addScaledVector(dir,-back);
+        this._pointUp(this.rocket, dir.clone());
+        this._applyDeploy(ease(Math.min(1,k/0.62)));                       // 展开在 62% 前完成
+        this.change.position.copy(this._transfer(0));
+        this._pointUp(this.change, dir.clone());
+        const f=Math.max(0, 1-Math.max(0,(k-0.55))/0.45);                  // 后段淡出
         this.rocket.children.forEach(c=>{ if(c.material){ c.material.transparent=true; c.material.opacity=f; } });
         if(f<=0) this.rocket.visible=false;
-        this.rocket.position.copy(this._park(Math.PI)).add(new THREE.Vector3(-this._transSepT*0.06, -this._transSepT*0.02, 0));  // 火箭缓缓落后
+        break; }
+      case 'TRANSFER': {
+        // 出舱完成，沿转移椭圆奔月（上面级已在 DEPLOY 段分离）
         const nu=this._nuFromM(Math.PI*ke);          // 平近点角 → 真近点角：近快远慢(与速度箭头一致)
         this.change.position.copy(this._transfer(nu));
         const nuP=Math.max(nu-0.02,0.001);
@@ -1130,6 +1178,7 @@ export class LunarMission extends ModuleBase {
     }
     const i=ORDER.indexOf(this.phase);
     if(k>=1 && i>=0 && i<ORDER.length-1) this._setPhase(ORDER[i+1]);
+    this._tryArmFreeCam();
     this._updateFlames(dt);
     this._updateStaging(k);
     this._updateFairing(k);
@@ -1217,9 +1266,15 @@ export class LunarMission extends ModuleBase {
         // 贴近火箭：径向外 + 轨道面切向后退，地球弧线铺满背景（相机始终在地球外）
         { const rp=this.rocket.position, out=rp.clone().normalize();
           const tan=new THREE.Vector3(0,0,1).cross(out).normalize();
-          pos.copy(rp).addScaledVector(out,0.56).addScaledVector(tan,-0.46);
+          // 加一个"出轨道面"的 z 分量：箭体在轨道面内，机位偏出平面 → 看到有倾斜的 3/4 侧视
+          pos.copy(rp).addScaledVector(out,0.30).addScaledVector(tan,-0.18).add(new THREE.Vector3(0,0,0.62));
           tgt.copy(rp); U.set(0,1,0); }
         break; }
+      case 'DEPLOY': {
+        // 出舱展开特写：与转移段同一观察方向，收尾时顺势拉远接上"奔月"大远景
+        const k2=Math.min(this.pt/DUR.DEPLOY,1);
+        pos.copy(this.change.position).addScaledVector(new THREE.Vector3(-0.52,0.40,-0.76).normalize(), 0.62-0.10*k2);
+        tgt.copy(this.change.position); U.set(0,1,0); break; }
       case 'TRANSFER': {
         // 长推近：开始广(带地球+月球+椭圆参照=空间线), 越近月球越逼近
         const k=Math.min(this.pt/DUR.TRANSFER,1);
@@ -1231,10 +1286,10 @@ export class LunarMission extends ModuleBase {
         pos.copy(this.change.position).addScaledVector(out,0.50).add(new THREE.Vector3(0,0.30,0));
         tgt.copy(this.change.position).lerp(mc,0.22); U.set(0,1,0); break; }
       case 'LUNAR_ORBIT': {
-        // 机位挂在月心→卫星的径向外侧：卫星绕月时，月球始终留在卫星背后(而不是甩出画面)
+        // 机位挂在月心→卫星的径向外侧，并偏出轨道面：卫星绕月时月球留在背后，且是斜侧视角(不再正对)
         const mc=new THREE.Vector3(MD,0,0), out=this.change.position.clone().sub(mc).normalize();
-        pos.copy(this.change.position).addScaledVector(out,0.64).add(new THREE.Vector3(0,0.34,0));
-        tgt.copy(this.change.position).lerp(mc,0.30); U.set(0,1,0); break; }
+        pos.copy(this.change.position).addScaledVector(out,0.40).add(new THREE.Vector3(0,0.22,0.52));
+        tgt.copy(this.change.position).lerp(mc,0.34); U.set(0,1,0); break; }
       case 'LANDING': case 'LANDED': {
         // 月面水平观察视角(同发射前地面机位): 站在月面低角度仰视登月器缓缓降落
         const site2=this._landSite||new THREE.Vector3(MD-RM-0.045,0,0);
@@ -1302,7 +1357,7 @@ export class LunarMission extends ModuleBase {
     p.textContent=(kid?PHASE_NAME_KID:PHASE_NAME)[this.phase]||this.phase; let sub='';
     sub=(kid?WHY_KID:WHY)[this.phase]||'';
     if(this.phase==='TRANSFER'){ const k=Math.min(this.pt/DUR.TRANSFER,1); sub+=`（转移 ${Math.round(k*100)}%）`; }
-    else if(this.phase==='LUNAR_ORBIT'){ sub+=`　绕月第 ${Math.floor(Math.min(this.pt/DUR.LUNAR_ORBIT,1)*LUNAR_ORBITS)+1}/${LUNAR_ORBITS} 圈`; }
+    else if(this.phase==='LUNAR_ORBIT'){ sub+=`　绕月飞行中 ${Math.round(Math.min(this.pt/DUR.LUNAR_ORBIT,1)*100)}%（可拖动旋转观察）`; }
     else if(this.phase==='LANDING'){ const k=Math.min(this.pt/DUR.LANDING,1); sub+=`（下降 ${Math.round(k*100)}%）`; }
     if(this.phase!=='COUNTDOWN'&&this.phase!=='IGNITION'){ const c=document.getElementById('mission-count'); if(c) c.textContent=''; }
     s.textContent=sub;

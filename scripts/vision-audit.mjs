@@ -27,6 +27,7 @@ const PLAN = {
   SPHERE:      { subject:'rocket',  dist:1.0,  el:16, up:[0,1,0],  frac:0.8 },
   STAGE_SEP:   { subject:'rocket',  dist:0.50, el:12, up:[0,1,0],  frac:0.6 },
   EARTH_ORBIT: { subject:'rocket',  dist:0.80, el:30, up:[0,1,0],  frac:0.55 },
+  DEPLOY:      { subject:'change',  dist:0.46, el:18, up:[0,1,0],  frac:0.6 },
   TRANSFER:    { subject:'change',  dist:0.36, el:16, up:[0,1,0],  frac:0.6 },
   LOI:         { subject:'change',  dist:0.30, el:14, up:[0,1,0],  frac:0.7 },
   LUNAR_ORBIT: { subject:'change',  dist:0.36, el:14, up:[0,1,0],  frac:0.5 },
