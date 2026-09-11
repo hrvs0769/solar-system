@@ -31,7 +31,7 @@ function mkTex(w,h,cb,opt={}){
   return t;
 }
 const ease=t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
-let _softDot=null,_blobTex=null,_flameTex=null,_smokeTex=null,_groundTex=null,_concTex=null,_hullTex=null,_fairTex=null,_panelTex=null,_goldTex=null,_solarTex=null,_mliBump=null,_craterMaps=null,_flagTex=null;
+let _softDot=null,_blobTex=null,_flameTex=null,_smokeTex=null,_groundTex=null,_concTex=null,_hullTex=null,_fairTex=null,_panelTex=null,_goldTex=null,_solarTex=null,_mliBump=null,_craterMaps=null,_flagTex=null,_vabSign=null;
 
 // 柔光点（粒子）
 function softDot(){ if(_softDot) return _softDot; _softDot=mkTex(64,64,(g)=>{ const gr=g.createRadialGradient(32,32,0,32,32,32);
@@ -200,16 +200,18 @@ function craterMaps(){
 function buildLunarPatch(){
   const g=new THREE.Group();
   const capA=Math.asin(Math.min(0.9,0.21/RM));
-  const maps=craterMaps();
   const capAlpha=mkTex(256,256,(g,w,h)=>{ const gr=g.createLinearGradient(0,0,0,h);   // 极点在画布顶端→向边缘淡出
     gr.addColorStop(0,'#ffffff'); gr.addColorStop(0.62,'#ffffff'); gr.addColorStop(1,'#000000');
     g.fillStyle=gr; g.fillRect(0,0,w,h); },{linear:true});
   capAlpha.wrapS=capAlpha.wrapT=THREE.ClampToEdgeWrapping;
-  const capMat=new THREE.MeshStandardMaterial({map:maps.albedo, bumpMap:maps.height, bumpScale:0.020, roughness:.99, metalness:0,
+  const capMat=new THREE.MeshStandardMaterial({color:0xa9a59d, roughness:.99, metalness:0,
     alphaMap:capAlpha, transparent:true, depthWrite:false});
-  const cap=new THREE.Mesh(new THREE.SphereGeometry(RM*1.003,72,48,0,Math.PI*2,0,capA), capMat);
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(RM*1.003,56,36,0,Math.PI*2,0,capA), capMat);
   cap.receiveShadow=true; g.add(cap);
   g.userData.capMat=capMat;
+  // 兜底：真实月面贴图迟迟不到时才生成程序化坑场（正常流程不生成，省启动时间与约 19MB 显存）
+  g.userData.applyCraters=()=>{ if(g.userData._crater) return; const m=craterMaps();
+    capMat.map=m.albedo; capMat.bumpMap=m.height; capMat.bumpScale=0.020; capMat.needsUpdate=true; g.userData._crater=true; };
   const rockMat=new THREE.MeshStandardMaterial({color:0x6e6b65, roughness:.98, metalness:0, flatShading:true});
   for(let i=0;i<9;i++){ const a=Math.random()*Math.PI*2, d=0.06+Math.random()*0.18;
     const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(0.0035+Math.random()*0.006,0), rockMat);
@@ -221,6 +223,13 @@ function buildLunarPatch(){
   g.visible=false;
   return g;
 }
+function vabSign(){ if(_vabSign) return _vabSign; _vabSign=mkTex(512,128,(g,w,h)=>{
+  g.fillStyle='#d9dde1'; g.fillRect(0,0,w,h);
+  g.fillStyle='#c8102e'; g.font='bold 64px "PingFang SC",sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.fillText('中国航天', w*0.34, h*0.44);
+  g.fillStyle='#12386e'; g.font='bold 30px sans-serif'; g.fillText('CASC · 文昌发射场', w*0.72, h*0.46);
+  g.strokeStyle='rgba(120,126,134,.6)'; g.lineWidth=3; g.strokeRect(2,2,w-4,h-4);
+}); return _vabSign; }
 function flagTex(){ if(_flagTex) return _flagTex; _flagTex=mkTex(160,107,(g,w,h)=>{
   g.fillStyle='#de2910'; g.fillRect(0,0,w,h);
   const star=(cx,cy,r,rot)=>{ g.save(); g.translate(cx,cy); g.rotate(rot); g.fillStyle='#ffde00'; g.beginPath();
@@ -410,8 +419,18 @@ function buildFacilities(){
       col.position.set(px,bh/2,sz*(bd/2+0.0006)); col.castShadow=true; vab.add(col); }); }
   [1,-1].forEach(sz=>{ const glass=new THREE.Mesh(new THREE.BoxGeometry(bw*0.96,0.010,0.0016), glassMat);
     glass.position.set(0,bh*0.74,sz*(bd/2+0.0012)); vab.add(glass); });
+  for(let i=0;i<=6;i++){ const pz=-bd/2+i/6*bd;                                       // 侧立面(±X)壁柱 + 窗带
+    [1,-1].forEach(sx=>{ const col=new THREE.Mesh(new THREE.BoxGeometry(0.004,bh,0.004), roofMat);
+      col.position.set(sx*(bw/2+0.0006),bh/2,pz); col.castShadow=true; vab.add(col); }); }
+  [1,-1].forEach(sx=>{ const glass=new THREE.Mesh(new THREE.BoxGeometry(0.0016,0.010,bd*0.94), glassMat);
+    glass.position.set(sx*(bw/2+0.0012),bh*0.74,0); vab.add(glass); });
   for(let i=0;i<4;i++){ const v=new THREE.Mesh(new THREE.BoxGeometry(0.020,0.006,0.030), roofMat);   // 屋顶通风器
     v.position.set(-bw*0.3+i*bw*0.2, bh+0.005, 0); v.castShadow=true; vab.add(v); }
+  { const par=new THREE.Mesh(new THREE.BoxGeometry(bw+0.006,0.006,bd+0.006), roofMat);  // 女儿墙
+    par.position.y=bh+0.001; vab.add(par);
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(bw*0.62,bw*0.62*0.25), new THREE.MeshStandardMaterial({map:vabSign(), roughness:.7, metalness:.05}));
+    sign.position.set(0,bh*0.42,bd/2+0.0022); vab.add(sign);
+    const sign2=sign.clone(); sign2.position.set(-(bw/2+0.0022),bh*0.42,0); sign2.rotation.y=-Math.PI/2; vab.add(sign2); }
   const door=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.085,0.0022), new THREE.MeshStandardMaterial({color:0x6f7580, metalness:.6, roughness:.5}));
   door.position.set(0,0.0425,bd/2+0.0012); vab.add(door);
   const doorSeam=new THREE.Mesh(new THREE.BoxGeometry(0.0015,0.085,0.0026), roofMat); doorSeam.position.set(0,0.0425,bd/2+0.0016); vab.add(doorSeam);
@@ -727,6 +746,7 @@ export class LunarMission extends ModuleBase {
     moon.name='moon'; moon.position.set(MD,0,0); moon.receiveShadow=true; moon.castShadow=false;
     this._loadTex('moon', t=>{ if(t&&moon.material){ moon.material.map=t; moon.material.bumpMap=t; moon.material.bumpScale=0.02; moon.material.color.set(0xffffff); moon.material.needsUpdate=true; }
       // 着陆点近景同样用真实月面贴图（取南半球高地，环形山密集），分辨率≈5km/像素
+      if(t) this._moonTexReady=true;
       if(t&&this.lunarPatch&&this.lunarPatch.userData.capMat){
         const cm=this.lunarPatch.userData.capMat, tc=t.clone();
         tc.needsUpdate=true; tc.wrapS=tc.wrapT=THREE.RepeatWrapping; tc.repeat.set(0.30,0.30); tc.offset.set(0.40,0.14);
@@ -735,6 +755,8 @@ export class LunarMission extends ModuleBase {
       } });
     this.moon=moon; this.moonGroup=new THREE.Group(); this.moonGroup.visible=false; this.moonGroup.add(moon); sc.add(this.moonGroup);
     this.lunarPatch=buildLunarPatch(); sc.add(this.lunarPatch);
+    this._moonTexReady=false;
+    setTimeout(()=>{ if(!this._moonTexReady&&this.lunarPatch&&this.lunarPatch.userData.applyCraters) this.lunarPatch.userData.applyCraters(); }, 5000);
 
     // —— 环境反射（IBL）：程序化 equirect 天空（含阳光下光斑），金属才不会发黑 ——
     this._buildEnvMap(sc);

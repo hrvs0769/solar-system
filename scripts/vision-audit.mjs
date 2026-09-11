@@ -21,9 +21,9 @@ const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', 
 
 // 阶段 → 拍摄对象 + 机位半径（电影单位）
 const PLAN = {
-  COUNTDOWN:   { subject:'rocket',  dist:0.46, el:10, up:[0,1,0],  frac:0.55 },
-  IGNITION:    { subject:'rocket',  dist:0.50, el:10, up:[0,1,0],  frac:0.9 },
-  LIFTOFF:     { subject:'rocket',  dist:0.60, el:8,  up:[0,1,0],  frac:0.6 },
+  COUNTDOWN:   { subject:'rocket',  dist:0.52, el:26, up:[0,1,0],  frac:0.55 },
+  IGNITION:    { subject:'rocket',  dist:0.54, el:26, up:[0,1,0],  frac:0.9 },
+  LIFTOFF:     { subject:'rocket',  dist:0.62, el:22,  up:[0,1,0],  frac:0.6 },
   SPHERE:      { subject:'rocket',  dist:1.0,  el:16, up:[0,1,0],  frac:0.8 },
   STAGE_SEP:   { subject:'rocket',  dist:0.50, el:12, up:[0,1,0],  frac:0.6 },
   EARTH_ORBIT: { subject:'rocket',  dist:0.80, el:30, up:[0,1,0],  frac:0.55 },
