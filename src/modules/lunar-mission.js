@@ -238,7 +238,22 @@ function mliBump(){ if(_mliBump) return _mliBump; _mliBump=mkTex(256,256,(g,w,h)
     gr.addColorStop(0,'#808080'); gr.addColorStop(0.45,`rgba(${v},${v},${v},.55)`); gr.addColorStop(1,'#808080');
     g.fillStyle=gr; g.fillRect(-r,-r*0.5,r*2,r); g.restore(); }
 },{linear:true}); return _mliBump; }
-function goldTex(){ if(_goldTex) return _goldTex; _goldTex=mkTex(128,64,g=>{ g.fillStyle='#8a6a1e'; g.fillRect(0,0,128,64); for(let y=0;y<64;y+=2){ const b=0.72+0.28*((y*31)%9)/9; g.fillStyle=`rgb(${Math.round(190*b)},${Math.round(140*b)},${Math.round(45*b)})`; g.fillRect(0,y,128,2); } }); return _goldTex; }
+function goldTex(){ if(_goldTex) return _goldTex; _goldTex=mkTex(256,256,(g,w,h)=>{
+  const base=g.createLinearGradient(0,0,0,h);
+  base.addColorStop(0,'#bb9130'); base.addColorStop(0.5,'#dcb14a'); base.addColorStop(1,'#a87f1e');
+  g.fillStyle=base; g.fillRect(0,0,w,h);
+  for(let i=0;i<2800;i++){                                   // 褶皱面片（多层隔热毡的碎面）
+    const x=Math.random()*w, y=Math.random()*h, s=3+Math.random()*15, a=Math.random()*Math.PI, v=0.5+Math.random()*0.8;
+    g.save(); g.translate(x,y); g.rotate(a);
+    g.fillStyle=`rgba(${Math.round(216*v)},${Math.round(172*v)},${Math.round(62*v)},${0.20+Math.random()*0.42})`;
+    g.beginPath(); g.moveTo(-s,-s*0.5); g.lineTo(s*0.7,-s*0.85); g.lineTo(s,s*0.4); g.lineTo(-s*0.6,s*0.7); g.closePath(); g.fill();
+    g.restore(); }
+  for(let i=0;i<500;i++){                                    // 折痕亮/暗线
+    const x=Math.random()*w, y=Math.random()*h, a=Math.random()*Math.PI, len=8+Math.random()*54, hi=Math.random()<0.5;
+    g.save(); g.translate(x,y); g.rotate(a);
+    g.strokeStyle=hi?`rgba(255,238,190,${0.10+Math.random()*0.26})`:`rgba(96,72,18,${0.10+Math.random()*0.24})`;
+    g.lineWidth=0.5+Math.random()*1.7; g.beginPath(); g.moveTo(-len/2,0); g.lineTo(len/2,0); g.stroke(); g.restore(); }
+}); return _goldTex; }
 function solarTex(){ if(_solarTex) return _solarTex; _solarTex=mkTex(128,64,g=>{ g.fillStyle='#06132e'; g.fillRect(0,0,128,64); for(let y=0;y<4;y++)for(let x=0;x<8;x++){ const b=0.26+0.16*((x*7+y*13)%9)/9; g.fillStyle=`rgb(${Math.round(18+b*50)},${Math.round(45+b*70)},${Math.round(110+b*95)})`; g.fillRect(x*16+1,y*16+1,14,14); } for(let x=0;x<=8;x++){ g.strokeStyle='rgba(210,230,255,.3)'; g.beginPath(); g.moveTo(x*16,0); g.lineTo(x*16,64); g.stroke(); } for(let y=0;y<=4;y++){ g.beginPath(); g.moveTo(0,y*16); g.lineTo(128,y*16); g.stroke(); } }); return _solarTex; }
 
 // —— 桁架/构件工具：用「两点一根杆」拼出真实桁架（合并成一个几何体，省 draw call）——
