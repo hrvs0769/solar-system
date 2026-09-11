@@ -860,7 +860,7 @@ export class LunarMission extends ModuleBase {
   }
   _reveal(line, frac){ if(line&&line.geometry) line.geometry.setDrawRange(0, Math.max(1, Math.floor(frac*201))); }
 
-  _setPhase(p){ this.phase=p; this.pt=0; this._enterPhase(p); }
+  _setPhase(p){ this.phase=p; this.pt=0; this._camEaseT=0; this._enterPhase(p); }
   _enterPhase(p){
     if(p==='COUNTDOWN'){ this.rocket.visible=true; this.boosters.visible=true; this.change.visible=false; this.steam.visible=false; this.plumeR.visible=false; this.plumeC.visible=false;
       this._fairK=0; this._applyFairing(0);
@@ -1254,8 +1254,13 @@ export class LunarMission extends ModuleBase {
     // 竖屏(手机)：水平视野窄，按比例把机位往后退，保证主体不被裁掉
     const el=this.ctx.renderer.domElement, asp=((el&&el.clientWidth)||16)/((el&&el.clientHeight)||9);
     if(asp<1.02){ const f=Math.min(1.75, 0.86/asp); d.pos.sub(d.tgt).multiplyScalar(f).add(d.tgt); }
-    const s=Math.min(1, dt*5);
-    this._cam.pos.lerp(d.pos,s); this._cam.tgt.lerp(d.tgt,s); this._cam.up.lerp(d.up,s);
+    // 阶段切换后的 1.1s 内放慢机位过渡(避免每个转场都像"甩镜头")，
+    // 其余时间快速跟随；注视点几乎实时跟上，否则快速运动的卫星会被甩出画面。
+    this._camEaseT=(this._camEaseT||0)+dt;
+    const tau=this._camEaseT<1.1 ? 0.42 : 0.16;
+    this._cam.pos.lerp(d.pos, Math.min(1, dt/tau));
+    this._cam.tgt.lerp(d.tgt, Math.min(1, dt*18));
+    this._cam.up.lerp(d.up, Math.min(1, dt*6));
     cam.position.copy(this._cam.pos); cam.up.copy(this._cam.up).normalize(); cam.lookAt(this._cam.tgt);
   }
   render(){ const ctx=this.ctx; const w=ctx.renderer.domElement.clientWidth, h=ctx.renderer.domElement.clientHeight; ctx.renderer.setViewport(0,0,w,h); ctx.renderer.setScissor(0,0,w,h); ctx.renderer.render(this.scene, ctx.camera); }
