@@ -10,7 +10,7 @@ import { isKidMode } from '../ui/kid-mode.js';
 // —— 电影舞台比例（非 AU，自洽）——
 const RE=1.0, RM=0.27, MD=15.0, PARK=1.35, LUNAR_R=0.6, LUNAR_ORBITS=2;
 const ORDER=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
-const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:6.5, SPHERE:9, STAGE_SEP:4, EARTH_ORBIT:9, TRANSFER:18, LOI:3, LUNAR_ORBIT:8, LANDING:11 };
+const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:6.5, SPHERE:9, STAGE_SEP:4, EARTH_ORBIT:9, TRANSFER:14, LOI:3, LUNAR_ORBIT:8, LANDING:8.5 };
 const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'分级脱离', EARTH_ORBIT:'地球轨道', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
 const PHASE_NAME_KID={ COUNTDOWN:'倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'看看地球', STAGE_SEP:'助推器分离', EARTH_ORBIT:'绕地球飞', TRANSFER:'飞向月球', LOI:'踩刹车', LUNAR_ORBIT:'绕月飞行', LANDING:'准备降落', LANDED:'着陆月球' };
 const WHY={ COUNTDOWN:'一切就绪，等待点火', IGNITION:'火焰 + 导流槽水雾喷涌', LIFTOFF:'突破大气，逐渐摆脱地球引力',
@@ -1114,7 +1114,7 @@ export class LunarMission extends ModuleBase {
         const lander=this.change.userData.lander, to=this._landSite.clone();   // 落点=当前轨道点正下方月面
         const dirDown=to.clone().sub(this._landerStart).normalize();
         const sepPos=this._landerStart.clone().addScaledVector(dirDown, ease(Math.min(this.pt/1.6,1))*0.09);  // 先与轨道器缓缓分离
-        lander.position.copy(sepPos).lerp(to, ke);
+        lander.position.copy(sepPos).lerp(to, Math.pow(k,0.88));   // 接近线性的下降(原 ease 两头慢，末段几乎看不出在动)
         this._pointUp(lander, this._landUp.clone());
         if(this.pt%0.08<dt) this._dust(lander.position);
         break; }
@@ -1158,7 +1158,8 @@ export class LunarMission extends ModuleBase {
     if(this.skyMat) this.skyMat.uniforms.uT.value=performance.now()/1000;
     if(this.starMat) this.starMat.uniforms.uA.value=Math.max(0, 1-skyA*1.1);
     // 地球/月球：地面段隐藏；SPHERE 后半段地球淡入（同时地面淡出）；离开地球后才见月球
-    const earthA=(ph==='SPHERE')?Math.max(0,Math.min(1,(kS-0.20)/0.34))
+    // 地面淡出时地球已经完整可见（若给地球做透明度淡入，透明期会呈一颗黑球）
+    const earthA=(ph==='SPHERE')?(kS>0.16?1:0)
       :(groundPh?0:1);
     if(this.earthGroup){ this.earthGroup.visible=earthA>0.01;
       if(this.earth&&this.earth.material){ this.earth.material.transparent=earthA<0.995; this.earth.material.opacity=earthA; }
@@ -1203,9 +1204,9 @@ export class LunarMission extends ModuleBase {
       case 'SPHERE': {
         // 敬畏段落：相机随火箭抬高并缓慢后拉，地球弧线从下方展开(揭示"地球是个球")
         const q=Math.min(this.pt/DUR.SPHERE,1), rq=ease(Math.min(q/0.72,1));
-        const rp=this.rocket.position;
-        pos.set(1.55+rq*1.35, rp.y+0.26+rq*0.34, -0.92-rq*0.66);   // 侧向机位：看地球中低纬度海陆，而不是极冠
-        tgt.copy(rp).add(new THREE.Vector3(0,-0.30-rq*0.55,0)); U.set(0,1,0); break; }
+        const rp=this.rocket.position, rr=0.75+rq*1.35;
+        pos.set(rr*0.86, rp.y+0.18+rq*0.58, -rr*0.52);           // 由近及远连续后拉，衔接升空段机位
+        tgt.copy(rp).add(new THREE.Vector3(0,-0.18-rq*0.62,0)); U.set(0,1,0); break; }
       case 'STAGE_SEP': {
         pos.copy(this.rocket.position).add(new THREE.Vector3(0.34,0.40,-0.44)); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
       case 'EARTH_ORBIT': {
@@ -1218,8 +1219,9 @@ export class LunarMission extends ModuleBase {
       case 'TRANSFER': {
         // 长推近：开始广(带地球+月球+椭圆参照=空间线), 越近月球越逼近
         const k=Math.min(this.pt/DUR.TRANSFER,1);
-        const r=0.72 - k*0.34;   // 广→近(以卫星为主体)
-        pos.copy(this.change.position).add(new THREE.Vector3(-0.55*r, 0.42*r, -0.72*r)); tgt.copy(this.change.position); U.set(0,1,0); break; }
+        const r=2.15 - k*1.80;   // 大远景(地球+椭圆+月球同框) → 一路推近到卫星
+        pos.copy(this.change.position).add(new THREE.Vector3(-0.52*r, 0.40*r, -0.76*r));
+        tgt.copy(this.change.position); U.set(0,1,0); break; }
       case 'LOI': {
         pos.copy(this.change.position).add(new THREE.Vector3(0.30, 0.52, -0.42)); tgt.copy(this.change.position); U.set(0,1,0); break; }
       case 'LUNAR_ORBIT': {
@@ -1231,8 +1233,10 @@ export class LunarMission extends ModuleBase {
         const upM=this._landUp||new THREE.Vector3(-1,0,0);
         const tan=this._landTangent||new THREE.Vector3(0,0,1);
         const landed=(this.phase==='LANDED');
-        pos.copy(site2).addScaledVector(upM, landed?0.035:0.02).addScaledVector(tan, landed?0.22:0.42);   // 站在月面、向阳侧后退
-        tgt.copy(lander.position).lerp(site2, landed?0.55:0.50); U.copy(upM); break; }
+        pos.copy(site2).addScaledVector(upM, landed?0.045:0.05).addScaledVector(tan, landed?0.22:0.55);   // 站在月面、向阳侧后退
+        // 下降段：镜头几乎盯住落点，只留少量跟随 —— 这样着陆器是"从画面上方降到落点"，
+        // 而不是被镜头锁死在画面中央(锁死时看起来像没在动)
+        tgt.copy(site2).lerp(lander.position, landed?0.12:(0.05+0.30*(1-Math.min(this.pt/DUR.LANDING,1)))); U.copy(upM); break; }
       default: pos.set(0,2.4,2.0); tgt.set(0,0,0); U.set(0,1,0);
     }
     return {pos,tgt,up};
