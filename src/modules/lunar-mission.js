@@ -31,7 +31,7 @@ function mkTex(w,h,cb,opt={}){
   return t;
 }
 const ease=t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
-let _softDot=null,_blobTex=null,_flameTex=null,_smokeTex=null,_groundTex=null,_concTex=null,_hullTex=null,_fairTex=null,_panelTex=null,_goldTex=null,_solarTex=null,_mliBump=null;
+let _softDot=null,_blobTex=null,_flameTex=null,_smokeTex=null,_groundTex=null,_concTex=null,_hullTex=null,_fairTex=null,_panelTex=null,_goldTex=null,_solarTex=null,_mliBump=null,_craterMaps=null,_flagTex=null;
 
 // 柔光点（粒子）
 function softDot(){ if(_softDot) return _softDot; _softDot=mkTex(64,64,(g)=>{ const gr=g.createRadialGradient(32,32,0,32,32,32);
@@ -127,33 +127,89 @@ function panelTex(){ if(_panelTex) return _panelTex; _panelTex=mkTex(512,512,(g,
   for(let x=0;x<w;x+=64){ g.fillStyle='rgba(120,126,134,.28)'; g.fillRect(x,0,1.6,h); }
   for(let i=0;i<420;i++){ const x=Math.random()*w,y=Math.random()*h,r=3+Math.random()*22;
     const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,'rgba(96,100,106,.12)'); gr.addColorStop(1,'rgba(96,100,106,0)'); g.fillStyle=gr; g.fillRect(x-r,y-r,r*2,r*2); } },{repeat:[1,1]}); return _panelTex; }
-function craterTex(){ return mkTex(1024,1024,(g,w,h)=>{
-  g.fillStyle='#a5a199'; g.fillRect(0,0,w,h);
-  for(let i=0;i<70;i++){ const x=Math.random()*w,y=Math.random()*h,r=90+Math.random()*260;      // 月海暗斑
-    const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,'rgba(104,101,96,.34)'); gr.addColorStop(1,'rgba(104,101,96,0)');
-    g.fillStyle=gr; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }
-  for(let i=0;i<4200;i++){ const v=Math.random()*48-24; g.fillStyle=`rgba(${150+v},${147+v},${140+v},.55)`; g.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*3,1+Math.random()*3); }
-  const crater=(x,y,r,deep)=>{
-    g.save(); g.translate(x,y); g.scale(1,0.86+Math.random()*0.2); g.rotate(Math.random()*3);
-    let gr=g.createRadialGradient(0,0,0,0,0,r);                                                  // 坑底
-    gr.addColorStop(0,`rgba(64,62,59,${0.52*deep})`); gr.addColorStop(0.5,`rgba(86,83,79,${0.42*deep})`);
-    gr.addColorStop(0.82,`rgba(126,122,116,${0.18*deep})`); gr.addColorStop(1,'rgba(150,146,140,0)');
-    g.fillStyle=gr; g.beginPath(); g.arc(0,0,r,0,7); g.fill();
-    gr=g.createRadialGradient(0,0,r*0.78,0,0,r*1.08);                                            // 柔和坑缘亮环
-    gr.addColorStop(0,'rgba(214,210,202,0)'); gr.addColorStop(0.5,`rgba(216,212,204,${0.26*deep})`); gr.addColorStop(1,'rgba(214,210,202,0)');
-    g.fillStyle=gr; g.beginPath(); g.arc(0,0,r*1.08,0,7); g.fill();
-    g.restore();
-  };
-  for(let i=0;i<300;i++) crater(Math.random()*w,Math.random()*h,12+Math.random()*86,0.85+Math.random()*0.35);
-  for(let i=0;i<1500;i++) crater(Math.random()*w,Math.random()*h,3+Math.random()*10,0.5+Math.random()*0.5);
-},{repeat:[1,1]}); }
-// 月面近景：球形帽(撞击坑贴图) + 碎石，落在着陆点正下方
+// 月面撞击坑：一次生成"同一批坑"的反射率贴图 + 高度贴图（高度用 bumpMap 让真实阳光刻出起伏）
+function mkrng(seed){ let t=seed>>>0; return ()=>{ t=(t*1664525+1013904223)>>>0; return t/4294967296; }; }
+function craterMaps(){
+  if(_craterMaps) return _craterMaps;
+  const W=1536, rnd=mkrng(20260910), craters=[];
+  // 幂律尺寸分布：小坑极多、大坑极少（真实月面的基本特征）
+  for(let i=0;i<13000;i++){
+    const u=rnd();
+    const r=1.0*Math.pow(64/1.0, Math.pow(u,2.4));
+    craters.push({ x:rnd()*W, y:rnd()*W, r, e:0.82+rnd()*0.36, a:rnd()*Math.PI*2,
+      d:0.42+rnd()*0.58, ray:(r>30&&rnd()<0.18), fresh:(r>14&&rnd()<0.24) });
+  }
+  craters.sort((p,q)=>q.r-p.r);                       // 大坑先画，小坑叠在上面
+  const alb=mkTex(W,W,(g)=>{
+    g.fillStyle='#a8a49c'; g.fillRect(0,0,W,W);
+    for(let i=0;i<44;i++){ const x=rnd()*W,y=rnd()*W,r=110+rnd()*300;                     // 月海
+      const gr=g.createRadialGradient(x,y,0,x,y,r);
+      gr.addColorStop(0,`rgba(96,93,88,${0.20+rnd()*0.16})`); gr.addColorStop(1,'rgba(96,93,88,0)');
+      g.fillStyle=gr; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }
+    for(let i=0;i<6000;i++){ const v=rnd()*40-20;
+      g.fillStyle=`rgba(${150+v},${147+v},${140+v},.5)`; g.fillRect(rnd()*W,rnd()*W,1+rnd()*3,1+rnd()*3); }
+    for(let i=0;i<160;i++){ const x=rnd()*W,y=rnd()*W,r=60+rnd()*220;                     // 大尺度明暗起伏
+      const gr=g.createRadialGradient(x,y,0,x,y,r);
+      const b=rnd()<0.5?232:150;
+      gr.addColorStop(0,`rgba(${b},${b-3},${b-9},.10)`); gr.addColorStop(1,`rgba(${b},${b-3},${b-9},0)`);
+      g.fillStyle=gr; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }
+    for(const c of craters){
+      g.save(); g.translate(c.x,c.y); g.scale(1,c.e); g.rotate(c.a);
+      // 月面反射率几乎均匀：环形山主要靠"光照阴影"才看得见，所以这里只画少量亮喷出物
+      if(c.ray){ g.globalAlpha=0.13;
+        for(let k=0;k<7;k++){ const ang=rnd()*Math.PI*2, len=c.r*(2.4+rnd()*3.6), wdt=c.r*(0.10+rnd()*0.18);
+          g.save(); g.rotate(ang); const lg=g.createLinearGradient(0,0,len,0);
+          lg.addColorStop(0,'rgba(232,229,222,.9)'); lg.addColorStop(1,'rgba(232,229,222,0)');
+          g.fillStyle=lg; g.fillRect(0,-wdt/2,len,wdt); g.restore(); }
+        g.globalAlpha=1; }
+      if(c.fresh){
+        let gr=g.createRadialGradient(0,0,c.r*0.95,0,0,c.r*1.30);
+        gr.addColorStop(0,`rgba(214,210,203,${0.10+0.14*c.d})`); gr.addColorStop(1,'rgba(214,210,203,0)');
+        g.fillStyle=gr; g.beginPath(); g.arc(0,0,c.r*1.30,0,7); g.fill();
+        g.lineWidth=Math.max(1,c.r*0.10); g.strokeStyle='rgba(228,225,218,.34)';
+        g.beginPath(); g.arc(0,0,c.r*0.99,0,7); g.stroke();
+      } else if(c.r>44){
+        const gr=g.createRadialGradient(0,0,0,0,0,c.r*0.98);
+        gr.addColorStop(0,`rgba(112,109,104,${0.10+0.14*c.d})`); gr.addColorStop(1,'rgba(112,109,104,0)');
+        g.fillStyle=gr; g.beginPath(); g.arc(0,0,c.r*0.98,0,7); g.fill();
+      }
+      g.restore();
+    }
+  },{repeat:[1,1]});
+  const hgt=mkTex(W,W,(g)=>{
+    g.fillStyle='#808080'; g.fillRect(0,0,W,W);
+    for(let i=0;i<120;i++){ const x=rnd()*W,y=rnd()*W,r=70+rnd()*240;                     // 起伏地形
+      const gr=g.createRadialGradient(x,y,0,x,y,r); const hi=rnd()<0.5;
+      gr.addColorStop(0,hi?'rgba(255,255,255,.16)':'rgba(0,0,0,.16)'); gr.addColorStop(1,'rgba(128,128,128,0)');
+      g.fillStyle=gr; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }
+    for(const c of craters){
+      g.save(); g.translate(c.x,c.y); g.scale(1,c.e); g.rotate(c.a);
+      const gr=g.createRadialGradient(0,0,0,0,0,c.r*1.05);                              // 中间低(坑)、边缘高(坑缘)
+      gr.addColorStop(0,`rgba(0,0,0,${0.34+0.46*c.d})`);
+      gr.addColorStop(0.70,`rgba(0,0,0,${0.16+0.26*c.d})`);
+      gr.addColorStop(0.90,'rgba(255,255,255,.52)');
+      gr.addColorStop(0.97,'rgba(190,190,190,.18)');
+      gr.addColorStop(1,'rgba(128,128,128,0)');
+      g.fillStyle=gr; g.beginPath(); g.arc(0,0,c.r*1.05,0,7); g.fill();
+      g.restore();
+    }
+  },{linear:true});
+  _craterMaps={albedo:alb, height:hgt};
+  return _craterMaps;
+}
 function buildLunarPatch(){
   const g=new THREE.Group();
-  const capA=Math.asin(Math.min(0.9,0.30/RM));
-  const cap=new THREE.Mesh(new THREE.SphereGeometry(RM*1.003,64,40,0,Math.PI*2,0,capA),
-    new THREE.MeshStandardMaterial({map:craterTex(), roughness:.98, metalness:0}));
+  const capA=Math.asin(Math.min(0.9,0.21/RM));
+  const maps=craterMaps();
+  const capAlpha=mkTex(256,256,(g,w,h)=>{ const gr=g.createLinearGradient(0,0,0,h);   // 极点在画布顶端→向边缘淡出
+    gr.addColorStop(0,'#ffffff'); gr.addColorStop(0.62,'#ffffff'); gr.addColorStop(1,'#000000');
+    g.fillStyle=gr; g.fillRect(0,0,w,h); },{linear:true});
+  capAlpha.wrapS=capAlpha.wrapT=THREE.ClampToEdgeWrapping;
+  const capMat=new THREE.MeshStandardMaterial({map:maps.albedo, bumpMap:maps.height, bumpScale:0.020, roughness:.99, metalness:0,
+    alphaMap:capAlpha, transparent:true, depthWrite:false});
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(RM*1.003,72,48,0,Math.PI*2,0,capA), capMat);
   cap.receiveShadow=true; g.add(cap);
+  g.userData.capMat=capMat;
   const rockMat=new THREE.MeshStandardMaterial({color:0x6e6b65, roughness:.98, metalness:0, flatShading:true});
   for(let i=0;i<9;i++){ const a=Math.random()*Math.PI*2, d=0.06+Math.random()*0.18;
     const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(0.0035+Math.random()*0.006,0), rockMat);
@@ -165,6 +221,15 @@ function buildLunarPatch(){
   g.visible=false;
   return g;
 }
+function flagTex(){ if(_flagTex) return _flagTex; _flagTex=mkTex(160,107,(g,w,h)=>{
+  g.fillStyle='#de2910'; g.fillRect(0,0,w,h);
+  const star=(cx,cy,r,rot)=>{ g.save(); g.translate(cx,cy); g.rotate(rot); g.fillStyle='#ffde00'; g.beginPath();
+    for(let i=0;i<5;i++){ const a=-Math.PI/2+i*Math.PI*2/5, a2=a+Math.PI/5;
+      g.lineTo(Math.cos(a)*r,Math.sin(a)*r); g.lineTo(Math.cos(a2)*r*0.42,Math.sin(a2)*r*0.42); }
+    g.closePath(); g.fill(); g.restore(); };
+  star(30,26,15,0); 
+  [[56,8],[70,20],[70,38],[56,50]].forEach(([x,y])=>star(x,y,5.4,0));
+}); return _flagTex; }
 function mliBump(){ if(_mliBump) return _mliBump; _mliBump=mkTex(256,256,(g,w,h)=>{
   g.fillStyle='#808080'; g.fillRect(0,0,w,h);
   for(let i=0;i<420;i++){ const x=Math.random()*w,y=Math.random()*h,r=6+Math.random()*26, a=Math.random()*Math.PI;
@@ -470,6 +535,13 @@ function buildChange(){
   const pane=new THREE.Mesh(new THREE.BoxGeometry(0.026,0.012,0.0018), new THREE.MeshStandardMaterial({color:0x1b2a44, metalness:.5, roughness:.25, emissive:0x101c33, emissiveIntensity:.5}));
   pane.position.set(0,0.004,0.0215); lander.add(pane);
   const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.023,0.023,0.004,16), dark); ring.position.y=0.016; lander.add(ring);
+  // 展开的国旗（嫦娥着陆器最经典的画面元素）
+  { const fm=new THREE.MeshStandardMaterial({map:flagTex(), roughness:.75, metalness:0, side:THREE.DoubleSide});
+    const flag=new THREE.Mesh(new THREE.PlaneGeometry(0.019,0.0125), fm);
+    flag.position.set(-0.0125,0.0165,0.0215); flag.rotation.y=-0.25; flag.castShadow=true; lander.add(flag);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.0007,0.0007,0.016,6), metal); pole.position.set(-0.0225,0.016,0.0215); lander.add(pole);
+    const band=new THREE.Mesh(new THREE.BoxGeometry(0.0432,0.0022,0.0432), new THREE.MeshStandardMaterial({color:0xc9a53a, metalness:.6, roughness:.5}));
+    band.position.y=0.0115; lander.add(band); }
   { const parts=[];
     for(let i=0;i<4;i++){ const a=i*Math.PI/2+Math.PI/4, cx=Math.cos(a), cz=Math.sin(a);
       member(parts, cx*0.019,-0.013,cz*0.019, cx*0.050,-0.052,cz*0.050, 0.0034);          // 主腿
@@ -611,7 +683,14 @@ export class LunarMission extends ModuleBase {
     // —— 月球（贴图 + 以亮度作凹凸，出真实环形山起伏）——
     const moon=new THREE.Mesh(new THREE.SphereGeometry(RM,72,72), new THREE.MeshStandardMaterial({color:0xdedbd3, roughness:.95, metalness:0}));
     moon.name='moon'; moon.position.set(MD,0,0); moon.receiveShadow=true; moon.castShadow=false;
-    this._loadTex('moon', t=>{ if(t&&moon.material){ moon.material.map=t; moon.material.bumpMap=t; moon.material.bumpScale=0.02; moon.material.color.set(0xffffff); moon.material.needsUpdate=true; } });
+    this._loadTex('moon', t=>{ if(t&&moon.material){ moon.material.map=t; moon.material.bumpMap=t; moon.material.bumpScale=0.02; moon.material.color.set(0xffffff); moon.material.needsUpdate=true; }
+      // 着陆点近景同样用真实月面贴图（取南半球高地，环形山密集），分辨率≈5km/像素
+      if(t&&this.lunarPatch&&this.lunarPatch.userData.capMat){
+        const cm=this.lunarPatch.userData.capMat, tc=t.clone();
+        tc.needsUpdate=true; tc.wrapS=tc.wrapT=THREE.RepeatWrapping; tc.repeat.set(0.30,0.30); tc.offset.set(0.40,0.14);
+        tc.anisotropy=8;
+        cm.map=tc; cm.bumpMap=tc; cm.bumpScale=0.030; cm.needsUpdate=true;
+      } });
     this.moon=moon; this.moonGroup=new THREE.Group(); this.moonGroup.visible=false; this.moonGroup.add(moon); sc.add(this.moonGroup);
     this.lunarPatch=buildLunarPatch(); sc.add(this.lunarPatch);
 
@@ -1124,7 +1203,11 @@ export class LunarMission extends ModuleBase {
     this._landTangent=this.sunDir.clone().addScaledVector(this._landUp,-this.sunDir.dot(this._landUp)).normalize();  // 向阳侧切向
     ch.remove(lander); this.scene.add(lander); lander.position.copy(wp);
     ch.remove(this.plumeC); lander.add(this.plumeC); this._landerStart=wp.clone();
-    if(this.lunarPatch){ const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), this._landUp);
+    if(this.lunarPatch){
+      // 让球冠的 UV 极点偏离着陆点约 38°：否则极点处的贴图压缩会在落点周围拉出放射状条纹
+      const side=new THREE.Vector3().crossVectors(this._landUp,this._landTangent).normalize();
+      const pole=this._landUp.clone().multiplyScalar(Math.cos(0.66)).addScaledVector(side,Math.sin(0.66)).normalize();
+      const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), pole);
       this.lunarPatch.position.copy(mc); this.lunarPatch.quaternion.copy(q); this.lunarPatch.visible=true; } }
   _showSuccess(){
     if(document.getElementById('mission-success')) return;
