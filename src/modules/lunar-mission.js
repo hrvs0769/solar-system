@@ -14,11 +14,11 @@ const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:6.5, SPHERE:9, STAGE_SEP:4, EAR
 const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'分级脱离', EARTH_ORBIT:'地球轨道', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
 const PHASE_NAME_KID={ COUNTDOWN:'倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'看看地球', STAGE_SEP:'助推器分离', EARTH_ORBIT:'绕地球飞', TRANSFER:'飞向月球', LOI:'踩刹车', LUNAR_ORBIT:'绕月飞行', LANDING:'准备降落', LANDED:'着陆月球' };
 const WHY={ COUNTDOWN:'一切就绪，等待点火', IGNITION:'火焰 + 导流槽水雾喷涌', LIFTOFF:'突破大气，逐渐摆脱地球引力',
-  SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'分级脱离：多级更省燃料', EARTH_ORBIT:'火箭绕地球一圈，获得入轨速度',
+  SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'分级脱离：多级更省燃料', EARTH_ORBIT:'抛掉整流罩(已出大气层) · 绕地球一圈获得入轨速度',
   TRANSFER:'上面级分离，嫦娥卫星出舱 · 为什么不是直线飞？沿椭圆最省燃料', LOI:'为什么必须制动？不减速会飞过月球', LUNAR_ORBIT:'嫦娥绕月探测，寻找落点',
   LANDING:'反推减速 → 缓缓降落', LANDED:'已在月球表面' };
 const WHY_KID={ COUNTDOWN:'数到零，火箭就出发', IGNITION:'点火！屁股后面喷出大火', LIFTOFF:'飞起来啦，越飞越高',
-  SPHERE:'看，地球原来是个大圆球', STAGE_SEP:'用完的助推器掉下去，火箭变轻了', EARTH_ORBIT:'绕着地球转一圈，就能跑得更快',
+  SPHERE:'看，地球原来是个大圆球', STAGE_SEP:'用完的助推器掉下去，火箭变轻了', EARTH_ORBIT:'保护罩没用了就扔掉 · 绕地球转一圈跑得更快',
   TRANSFER:'离开地球，向月球飞去 · 走弯路反而更省力', LOI:'快到月球了，要踩刹车，不然会飞过头', LUNAR_ORBIT:'绕着月球转圈圈，找地方降落',
   LANDING:'慢慢往下落，别摔着', LANDED:'稳稳地停在月球上' };
 
@@ -31,7 +31,7 @@ function mkTex(w,h,cb,opt={}){
   return t;
 }
 const ease=t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
-let _softDot=null,_blobTex=null,_flameTex=null,_smokeTex=null,_groundTex=null,_concTex=null,_hullTex=null,_fairTex=null,_panelTex=null,_goldTex=null,_solarTex=null;
+let _softDot=null,_blobTex=null,_flameTex=null,_smokeTex=null,_groundTex=null,_concTex=null,_hullTex=null,_fairTex=null,_panelTex=null,_goldTex=null,_solarTex=null,_mliBump=null;
 
 // 柔光点（粒子）
 function softDot(){ if(_softDot) return _softDot; _softDot=mkTex(64,64,(g)=>{ const gr=g.createRadialGradient(32,32,0,32,32,32);
@@ -165,6 +165,14 @@ function buildLunarPatch(){
   g.visible=false;
   return g;
 }
+function mliBump(){ if(_mliBump) return _mliBump; _mliBump=mkTex(256,256,(g,w,h)=>{
+  g.fillStyle='#808080'; g.fillRect(0,0,w,h);
+  for(let i=0;i<420;i++){ const x=Math.random()*w,y=Math.random()*h,r=6+Math.random()*26, a=Math.random()*Math.PI;
+    g.save(); g.translate(x,y); g.rotate(a);
+    const gr=g.createLinearGradient(-r,0,r,0); const v=Math.random()<0.5?255:0;
+    gr.addColorStop(0,'#808080'); gr.addColorStop(0.45,`rgba(${v},${v},${v},.55)`); gr.addColorStop(1,'#808080');
+    g.fillStyle=gr; g.fillRect(-r,-r*0.5,r*2,r); g.restore(); }
+},{linear:true}); return _mliBump; }
 function goldTex(){ if(_goldTex) return _goldTex; _goldTex=mkTex(128,64,g=>{ g.fillStyle='#8a6a1e'; g.fillRect(0,0,128,64); for(let y=0;y<64;y+=2){ const b=0.72+0.28*((y*31)%9)/9; g.fillStyle=`rgb(${Math.round(190*b)},${Math.round(140*b)},${Math.round(45*b)})`; g.fillRect(0,y,128,2); } }); return _goldTex; }
 function solarTex(){ if(_solarTex) return _solarTex; _solarTex=mkTex(128,64,g=>{ g.fillStyle='#06132e'; g.fillRect(0,0,128,64); for(let y=0;y<4;y++)for(let x=0;x<8;x++){ const b=0.26+0.16*((x*7+y*13)%9)/9; g.fillStyle=`rgb(${Math.round(18+b*50)},${Math.round(45+b*70)},${Math.round(110+b*95)})`; g.fillRect(x*16+1,y*16+1,14,14); } for(let x=0;x<=8;x++){ g.strokeStyle='rgba(210,230,255,.3)'; g.beginPath(); g.moveTo(x*16,0); g.lineTo(x*16,64); g.stroke(); } for(let y=0;y<=4;y++){ g.beginPath(); g.moveTo(0,y*16); g.lineTo(128,y*16); g.stroke(); } }); return _solarTex; }
 
@@ -191,9 +199,11 @@ function trussParts(w,d,h,levels,col=.0016,brace=.0011){
   return p;
 }
 // 圆滑整流罩/头锥母线（冯·卡门近似）
-function ogive(r,h,seg=20,cyl=0){ const pts=[]; if(cyl>0) pts.push(new THREE.Vector2(r,0),new THREE.Vector2(r,cyl));
+function ogive(r,h,seg=20,cyl=0,phiStart=0,phiLength=Math.PI*2){ const pts=[]; if(cyl>0) pts.push(new THREE.Vector2(r,0),new THREE.Vector2(r,cyl));
   const n=seg; for(let i=0;i<=n;i++){ const t=i/n; const rr=r*Math.pow(Math.max(0,1-t*t),0.62); pts.push(new THREE.Vector2(rr, cyl+h*t)); }
-  return new THREE.LatheGeometry(pts, 24); }
+  return new THREE.LatheGeometry(pts, 28, phiStart, phiLength); }
+// 抛物面天线（浅碗）
+function dishGeo(R,depth,seg=28){ const pts=[]; const n=14; for(let i=0;i<=n;i++){ const t=i/n; pts.push(new THREE.Vector2(R*t, depth*t*t)); } return new THREE.LatheGeometry(pts,seg); }
 // 钟形喷管
 function bellGeo(rt,re,h,seg=18){ const pts=[]; const n=10;
   for(let i=0;i<=n;i++){ const t=i/n; const rr=rt+(re-rt)*Math.pow(t,0.62); pts.push(new THREE.Vector2(rr,t*h)); }
@@ -392,9 +402,19 @@ function buildRocket(){
   const inter=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.01,RC*1.01,0.0055,36), dark); inter.position.y=0.1155; inter.castShadow=true; g.add(inter);
   // 二级
   const s2=new THREE.Mesh(new THREE.CylinderGeometry(RC*0.98,RC*0.98,0.0225,36), hull2); s2.position.y=0.1295; s2.castShadow=true; g.add(s2);
-  // 整流罩（等直段 + 冯·卡门头锥）
-  const fair=new THREE.Mesh(ogive(RC*1.10,0.030,18,0.016), fairMat); fair.position.y=0.1405; fair.castShadow=true; g.add(fair);
-  const fairBase=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.10,RC*1.10,0.004,36,1,true), dark); fairBase.position.y=0.1425; g.add(fairBase);
+  // 载荷适配器（整流罩抛掉后可见）
+  const adapter=new THREE.Mesh(new THREE.CylinderGeometry(RC*0.80,RC*0.95,0.010,28), dark); adapter.position.y=0.1425; adapter.castShadow=true; g.add(adapter);
+  const payl=new THREE.Mesh(new THREE.BoxGeometry(0.014,0.014,0.016), new THREE.MeshStandardMaterial({map:goldTex(), metalness:.7, roughness:.45, bumpMap:mliBump(), bumpScale:0.0016}));
+  payl.position.y=0.1545; payl.castShadow=true; g.add(payl);
+  // 整流罩：两瓣（沿 YZ 面对开，铰链在根部）
+  fairMat.side=THREE.DoubleSide;
+  const fairL=new THREE.Group(), fairR=new THREE.Group();
+  fairL.position.y=0.1405; fairR.position.y=0.1405; g.add(fairL); g.add(fairR);
+  const shellL=new THREE.Mesh(ogive(RC*1.10,0.030,18,0.016,0,Math.PI), fairMat); shellL.castShadow=true; fairL.add(shellL);
+  const shellR=new THREE.Mesh(ogive(RC*1.10,0.030,18,0.016,Math.PI,Math.PI), fairMat); shellR.castShadow=true; fairR.add(shellR);
+  const capL=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.10,RC*1.10,0.004,18,1,true,0,Math.PI), dark); capL.position.y=0.002; fairL.add(capL);
+  const capR=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.10,RC*1.10,0.004,18,1,true,Math.PI,Math.PI), dark); capR.position.y=0.002; fairR.add(capR);
+  g.userData.fairL=fairL; g.userData.fairR=fairR; g.userData.fairMat=fairMat;
   // 芯级两台发动机构型（YF-77）
   [[-1],[1]].forEach(([s])=>{ const b=new THREE.Mesh(bellGeo(0.0016,0.0042,0.014,20), bell); b.position.set(s*RC*0.44,-0.007,0); b.castShadow=true; g.add(b);
     const turb=new THREE.Mesh(new THREE.SphereGeometry(0.0022,10,8), dark); turb.position.set(s*RC*0.44,-0.0015,0.0055); g.add(turb); });
@@ -408,25 +428,39 @@ function buildBoosters(){
   const skin=new THREE.MeshStandardMaterial({color:0xeceae4, roughness:.5, metalness:.16});
   const dark=new THREE.MeshStandardMaterial({color:0x4b5058, metalness:.78, roughness:.42});
   const bell=new THREE.MeshStandardMaterial({color:0x353a41, metalness:.9, roughness:.34, side:THREE.DoubleSide});
-  [0,1,2,3].forEach(i=>{ const a=i*Math.PI/2+Math.PI/4, cx=Math.cos(a)*ORB, cz=Math.sin(a)*ORB;
-    const body=new THREE.Mesh(new THREE.CylinderGeometry(BR,BR,BH,26), skin); body.position.set(cx,BH/2,cz); body.castShadow=true; body.receiveShadow=true; g.add(body);
-    const nose=new THREE.Mesh(ogive(BR,0.0145,14,0.002), skin); nose.position.set(cx,BH,cz); nose.castShadow=true; g.add(nose);
-    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(BR*1.08,BR*1.12,0.007,24), dark); skirt.position.set(cx,0.0015,cz); skirt.castShadow=true; g.add(skirt);
-    const bn=new THREE.Mesh(bellGeo(0.0014,0.0036,0.012,16), bell); bn.position.set(cx,-0.007,cz); g.add(bn);
-    const ring=new THREE.Mesh(new THREE.CylinderGeometry(BR*1.01,BR*1.01,0.0014,24), dark); ring.position.set(cx,BH*0.62,cz); g.add(ring); });
+  [0,1,2,3].forEach(i=>{ const a=i*Math.PI/2+Math.PI/4;
+    const b=new THREE.Group(); b.position.set(Math.cos(a)*ORB,0,Math.sin(a)*ORB); b.userData.dir=new THREE.Vector3(Math.cos(a),0,Math.sin(a));
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(BR,BR,BH,26), skin); body.position.y=BH/2; body.castShadow=true; body.receiveShadow=true; b.add(body);
+    const nose=new THREE.Mesh(ogive(BR,0.0145,14,0.002), skin); nose.position.y=BH; nose.castShadow=true; b.add(nose);
+    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(BR*1.08,BR*1.12,0.007,24), dark); skirt.position.y=0.0015; skirt.castShadow=true; b.add(skirt);
+    const bn=new THREE.Mesh(bellGeo(0.0014,0.0036,0.012,16), bell); bn.position.y=-0.007; b.add(bn);
+    const ring=new THREE.Mesh(new THREE.CylinderGeometry(BR*1.01,BR*1.01,0.0014,24), dark); ring.position.y=BH*0.62; b.add(ring);
+    const sepMotor=new THREE.Mesh(bellGeo(0.0006,0.0016,0.005,10), bell); sepMotor.position.set(0,BH*0.86,BR*0.9); sepMotor.rotation.x=Math.PI*0.5; b.add(sepMotor);
+    g.add(b); });
+  g.userData.orb=ORB;
   return g;
 }
 function buildChange(){
   const g=new THREE.Group();
-  const gold=new THREE.MeshStandardMaterial({map:goldTex(), metalness:.72, roughness:.42});
+  const gold=new THREE.MeshStandardMaterial({map:goldTex(), metalness:.72, roughness:.42, bumpMap:mliBump(), bumpScale:0.0012});
   const metal=new THREE.MeshStandardMaterial({color:0xb9bec7, metalness:.85, roughness:.32});
   const dark=new THREE.MeshStandardMaterial({color:0x53585f, metalness:.8, roughness:.4});
   const solar=new THREE.MeshStandardMaterial({map:solarTex(), metalness:.35, roughness:.55, side:THREE.DoubleSide});
   const svc=new THREE.Mesh(new THREE.BoxGeometry(0.045,0.045,0.05), gold); svc.position.y=0.045; svc.castShadow=true; g.add(svc);
-  const dish=new THREE.Mesh(new THREE.SphereGeometry(0.022,20,12,0,Math.PI*2,0,Math.PI*0.4), metal); dish.rotation.x=-Math.PI/2; dish.position.set(0,0.08,0); dish.castShadow=true; g.add(dish);
-  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.0012,0.0012,0.024,8), metal); mast.position.set(0,0.068,0); g.add(mast);
+  const dish=new THREE.Mesh(dishGeo(0.024,0.008,28), new THREE.MeshStandardMaterial({color:0xd8dce2, metalness:.55, roughness:.28, side:THREE.DoubleSide}));
+  dish.position.set(0,0.076,0); dish.castShadow=true; g.add(dish);
+  const feed=new THREE.Mesh(new THREE.ConeGeometry(0.0035,0.006,10), dark); feed.position.set(0,0.0175,0); g.add(feed);   // 馈源
+  const feedRod=new THREE.Mesh(new THREE.CylinderGeometry(0.0009,0.0009,0.010,8), metal); feedRod.position.set(0,0.012,0); g.add(feedRod);
+  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.0016,0.0016,0.024,8), metal); mast.position.set(0,0.064,0); g.add(mast);
   [[-1],[1]].forEach(([s])=>{ const wing=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.0045,0.03), solar); wing.position.x=s*0.062; wing.position.y=0.045; wing.castShadow=true; g.add(wing);
-    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.0016,0.0016,0.022,8), metal); arm.rotation.z=Math.PI/2; arm.position.set(s*0.033,0.045,0); g.add(arm); });
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.0016,0.0016,0.022,8), metal); arm.rotation.z=Math.PI/2; arm.position.set(s*0.033,0.045,0); g.add(arm);
+    [[1,-1],[1,1]].forEach(([ex,ez])=>{ const fr=new THREE.Mesh(new THREE.BoxGeometry(0.080,0.0052,0.0016), dark);
+      fr.position.set(s*0.062,0.045,ez*0.0148); g.add(fr);
+      const fr2=new THREE.Mesh(new THREE.BoxGeometry(0.0016,0.0052,0.030), dark); fr2.position.set(s*0.062+ex*0.040,0.045,0); g.add(fr2); }); });
+  for(let i=0;i<2;i++){ const t=(i?1:-1)*0.012;                                                      // 全向天线
+    const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.0006,0.0006,0.018,6), metal); rod.position.set(t,0.076,0.012); g.add(rod);
+    const tip=new THREE.Mesh(new THREE.SphereGeometry(0.0016,8,6), metal); tip.position.set(t,0.085,0.012); g.add(tip); }
+  const st=new THREE.Mesh(new THREE.BoxGeometry(0.006,0.006,0.005), dark); st.position.set(0.016,0.062,0.014); g.add(st);   // 星敏感器
   for(let i=0;i<4;i++){ const a=i*Math.PI/2+Math.PI/4; const th=new THREE.Mesh(bellGeo(0.0012,0.0032,0.009,12), dark);
     th.position.set(Math.cos(a)*0.016,0.019,Math.sin(a)*0.016); g.add(th); }
   const lander=new THREE.Group(); lander.name='lander'; lander.position.y=-0.045;
@@ -451,16 +485,18 @@ function buildChange(){
   return g;
 }
 // —— 尾焰：贴图湍流焰芯（实心可读） + 加色外发光 + 喷口冲击环 ——
-function buildPlume(sc=1){
+function buildPlume(sc=1,vacuum=false){
   const g=new THREE.Group();
-  const core=new THREE.Mesh(new THREE.ConeGeometry(0.015*sc,0.115,24,1,true),
-    new THREE.MeshBasicMaterial({map:flameTex(), transparent:true, depthWrite:false, side:THREE.DoubleSide, blending:THREE.NormalBlending, color:0xffffff}));
-  core.position.y=-0.0575;
-  const glow=new THREE.Mesh(new THREE.ConeGeometry(0.030*sc,0.14,20,1,true),
-    new THREE.MeshBasicMaterial({map:glowTex(), transparent:true, opacity:.55, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, color:0xff9a3c}));
-  glow.position.y=-0.062;
+  // 大气层内：实心橙白焰（亮天空下也要看得见）；真空：淡蓝白加色焰（真实姿态发动机几乎无烟）
+  const core=new THREE.Mesh(new THREE.ConeGeometry((vacuum?0.008:0.015)*sc,(vacuum?0.075:0.115),24,1,true),
+    vacuum ? new THREE.MeshBasicMaterial({map:flameTex(), transparent:true, opacity:.85, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, color:0xbfe0ff})
+           : new THREE.MeshBasicMaterial({map:flameTex(), transparent:true, depthWrite:false, side:THREE.DoubleSide, blending:THREE.NormalBlending, color:0xffffff}));
+  core.position.y=(vacuum?-0.0375:-0.0575);
+  const glow=new THREE.Mesh(new THREE.ConeGeometry((vacuum?0.020:0.030)*sc,(vacuum?0.10:0.14),20,1,true),
+    new THREE.MeshBasicMaterial({map:glowTex(), transparent:true, opacity:.55, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, color:(vacuum?0x7fc0ff:0xff9a3c)}));
+  glow.position.y=(vacuum?-0.045:-0.062);
   const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.019*sc,0.013*sc,0.012,18,1,true),
-    new THREE.MeshBasicMaterial({color:0xffe0b0, transparent:true, opacity:.75, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending}));
+    new THREE.MeshBasicMaterial({color:(vacuum?0xcfe6ff:0xffe0b0), transparent:true, opacity:.75, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending}));
   ring.position.y=-0.005;
   g.add(core); g.add(glow); g.add(ring);
   g.userData.core=core; g.userData.glow=glow; g.userData.ring=ring;
@@ -468,6 +504,12 @@ function buildPlume(sc=1){
   g.visible=false; return g;
 }
 // —— 发射烟云（软云团粒子，可扩散可淡出）——
+// 分离螺栓/小推力器的短促白烟
+function buildBurst(){ const N=300, geo=new THREE.BufferGeometry(), arr=new Float32Array(N*3);
+  for(let i=0;i<N;i++) arr[i*3+1]=-999;
+  geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
+  const mat=new THREE.PointsMaterial({color:0xf7faff, size:0.011, map:blobTex(), transparent:true, opacity:0.95, depthWrite:false, sizeAttenuation:true, alphaTest:0.01});
+  const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[]}; pts.renderOrder=2; return pts; }
 function buildSteam(){ const N=800, geo=new THREE.BufferGeometry(), arr=new Float32Array(N*3); geo.setAttribute('position',new THREE.BufferAttribute(arr,3));
   for(let i=0;i<N;i++) arr[i*3+1]=-999;
   const mat=new THREE.PointsMaterial({color:0xf2f5f8, size:0.09, map:blobTex(), transparent:true, opacity:0, depthWrite:false, sizeAttenuation:true, alphaTest:0.01});
@@ -596,9 +638,9 @@ export class LunarMission extends ModuleBase {
 
     // —— 火箭 / 助推器 / 嫦娥 / 尾焰 / 烟云 ——
     this.rocket=buildRocket(); this.boosters=buildBoosters(); this.change=buildChange();
-    this.plumeR=buildPlume(); this.plumeC=buildPlume(1.0); this.steam=buildSteam();
+    this.plumeR=buildPlume(); this.plumeC=buildPlume(1.0,true); this.steam=buildSteam(); this.burst=buildBurst();
     this.rocket.add(this.plumeR); this.change.add(this.plumeC); this.plumeC.scale.setScalar(2.6);
-    [this.rocket,this.boosters,this.change,this.steam].forEach(o=>{ this.scene.add(o); });
+    [this.rocket,this.boosters,this.change,this.steam,this.burst].forEach(o=>{ this.scene.add(o); });
     this.linePark=this._mkLine(k=>this._park(k*Math.PI*2), 0x7fd0ff);
     this.lineTransfer=this._mkLine(k=>this._transfer(k*Math.PI), 0xffd54a);
     this.lineLunar=this._mkLine(k=>this._lunar(k*Math.PI*2), 0x8fd0ff);
@@ -677,17 +719,25 @@ export class LunarMission extends ModuleBase {
   _setPhase(p){ this.phase=p; this.pt=0; this._enterPhase(p); }
   _enterPhase(p){
     if(p==='COUNTDOWN'){ this.rocket.visible=true; this.boosters.visible=true; this.change.visible=false; this.steam.visible=false; this.plumeR.visible=false; this.plumeC.visible=false;
+      this._fairK=0; this._applyFairing(0);
+      if(this.boosters) this.boosters.children.forEach(b=>{ b.visible=true; b.position.set((b.userData.dir.x)*(this.boosters.userData.orb||0.014),0,(b.userData.dir.z)*(this.boosters.userData.orb||0.014)); b.rotation.set(0,0,0);
+        b.children.forEach(c=>{ if(c.material&&c.userData._mt){ c.material.opacity=1; c.material.transparent=false; } }); });
       this.rocket.position.copy(this._site).add(new THREE.Vector3(0,0.006,0)); this._pointUp(this.rocket, new THREE.Vector3(0,1,0));
       this.boosters.position.copy(this.rocket.position); this.boosters.quaternion.copy(this.rocket.quaternion); this.boosters.userData.sep=null;
       this._hideLines(); }
     if(p==='IGNITION'){ this.plumeR.visible=true; this.steam.visible=true; this._spawnSteam(); }
     if(p==='LIFTOFF'){ this.plumeR.visible=true; }
     if(p==='SPHERE'){ this.plumeR.visible=true; }
-    if(p==='STAGE_SEP'){ this.plumeR.visible=false; this.stageSepT=0; if(this.boosters) this.boosters.userData.sep={t:0}; }
+    if(p==='STAGE_SEP'){ this.plumeR.visible=false; this.stageSepT=0;
+      if(this.boosters){ this.boosters.userData.sep={t:0};
+        const rp=this.rocket.position, orb=this.boosters.userData.orb||0.0140;
+        [0,1,2,3].forEach(i=>{ const a=i*Math.PI/2+Math.PI/4;
+          this._spawnBurst(rp.clone().add(new THREE.Vector3(Math.cos(a)*orb, 0.010, Math.sin(a)*orb)), 60, 0.26); }); } }
     if(p==='EARTH_ORBIT'){ this.change.visible=false; this.rocket.visible=true; if(this.boosters) this.boosters.visible=false; this.linePark.visible=true;
       // 绕地球时开放用户手动视角(拖动/捏合绕火箭观察)
       const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls;
-      if(c){ this._saveMinMax={min:c.minDistance,max:c.maxDistance}; c.minDistance=0.5; c.maxDistance=6; c.target.copy(this.rocket.position); this.ctx.camera.position.copy(this.rocket.position).add(new THREE.Vector3(1.1,0.9,1.5)); c.enabled=true; this._freeCam=true; } }
+      if(c){ this._saveMinMax={min:c.minDistance,max:c.maxDistance}; c.minDistance=0.5; c.maxDistance=6; c.target.copy(this.rocket.position); { const rp=this.rocket.position, out=rp.clone().normalize(), tan=new THREE.Vector3(0,0,1).cross(out).normalize();
+          this.ctx.camera.position.copy(rp).addScaledVector(out,0.56).addScaledVector(tan,-0.46); } c.enabled=true; this._freeCam=true; } }
     if(p==='TRANSFER'){ if(this._freeCam){ const c=this.ctx.cameraRig.controls; if(c){ c.enabled=false; if(this._saveMinMax){ c.minDistance=this._saveMinMax.min; c.maxDistance=this._saveMinMax.max; } } this._freeCam=false; } }
     if(p==='TRANSFER'){ this.change.visible=true; this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; this._transSepT=0; }
     if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); if(this.speedArrows) this.speedArrows.visible=false; }
@@ -697,6 +747,46 @@ export class LunarMission extends ModuleBase {
   }
   _hideLines(){ [this.linePark,this.lineTransfer,this.lineLunar].forEach(l=>{ if(l){ l.visible=false; if(l.geometry) l.geometry.setDrawRange(0,0); } }); if(this.speedArrows) this.speedArrows.visible=false; }
   _fadeWenchang(a){ this._fadeGroup(this.siteGroup, Math.max(0,Math.min(1,a))); }
+  // —— 整流罩分离（SPHERE 中后段两瓣对开并落后淡出）——
+  _applyFairing(a){
+    const u=this.rocket&&this.rocket.userData; if(!u||!u.fairL) return;
+    const open=Math.min(1,a/0.55), drift=Math.max(0,(a-0.34)/0.66);
+    u.fairL.rotation.z=-open*1.0; u.fairR.rotation.z=open*1.0;
+    const dx=open*0.012;
+    u.fairL.position.set(-dx, 0.1405-drift*0.30, -drift*0.020);
+    u.fairR.position.set( dx, 0.1405-drift*0.30,  drift*0.020);
+    const vis=a<0.985; u.fairL.visible=vis; u.fairR.visible=vis;
+  }
+  _updateFairing(k){
+    const idx=ORDER.indexOf(this.phase);
+    let target=0;
+    // 真实顺序：助推器分离(STAGE_SEP) → 出大气层后抛整流罩(EARTH_ORBIT 前段) → 入轨
+    if(this.phase==='EARTH_ORBIT') target=Math.max(0,Math.min(1,(k-0.06)/0.30));
+    else if(idx>ORDER.indexOf('EARTH_ORBIT')) target=1;
+    if(target>(this._fairK||0)+1e-4){ this._fairK=target; this._applyFairing(target); }
+  }
+  // —— 分离白烟粒子池 ——
+  _spawnBurst(pos, n=70, speed=0.30){
+    const pts=this.burst; if(!pts) return;
+    const parts=pts.userData.parts;
+    for(let i=parts.length-1;i>=0;i--) if(parts[i].life<=0) parts.splice(i,1);
+    for(let i=0;i<n && parts.length<300;i++){
+      const a=Math.random()*Math.PI*2, b=Math.acos(2*Math.random()-1), sp=speed*(0.35+Math.random());
+      parts.push({ x:pos.x,y:pos.y,z:pos.z,
+        vx:Math.sin(b)*Math.cos(a)*sp, vy:Math.cos(b)*sp*0.7+0.05, vz:Math.sin(b)*Math.sin(a)*sp, life:0.45+Math.random()*0.55 });
+    }
+    pts.visible=true;
+  }
+  _updateBurst(dt){
+    const pts=this.burst; if(!pts||!pts.visible) return;
+    const arr=pts.geometry.attributes.position.array, parts=pts.userData.parts;
+    let alive=0;
+    for(let i=0;i<parts.length;i++){ const p=parts[i]; p.life-=dt;
+      if(p.life>0){ alive++; p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt; p.vx*=0.93; p.vy*=0.93; p.vz*=0.93;
+        arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z; } else arr[i*3+1]=-999; }
+    pts.geometry.attributes.position.needsUpdate=true;
+    if(alive===0){ pts.visible=false; parts.length=0; }
+  }
   _syncBoosters(){ if(!this.boosters||!this.boosters.visible) return; const sep=this.boosters.userData&&this.boosters.userData.sep; if(sep) return; this.boosters.position.copy(this.rocket.position); this.boosters.quaternion.copy(this.rocket.quaternion); }
 
   _pointUp(obj,dir){ if(!obj||!dir||dir.lengthSq()<1e-10) return; obj.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize()); }
@@ -727,6 +817,8 @@ export class LunarMission extends ModuleBase {
     if(!this.active) this.start();
     const ti=ORDER.indexOf(phase); if(ti<0) return null;
     this._qaLock=false;
+    this._freeCam=false;
+    const cc=this.ctx.cameraRig&&this.ctx.cameraRig.controls; if(cc) cc.enabled=false;
     // 依次"预热"到该阶段末态，保证轨道位置/落点等状态与真实流程一致
     for(let i=0;i<=ti;i++){
       const p=ORDER[i];
@@ -744,6 +836,8 @@ export class LunarMission extends ModuleBase {
   }
   qaCam(pos, tgt, up){
     if(!this.active) return false;
+    this._freeCam=false;
+    const cc=this.ctx.cameraRig&&this.ctx.cameraRig.controls; if(cc) cc.enabled=false;
     this._cam.pos.set(pos[0],pos[1],pos[2]);
     this._cam.tgt.set(tgt[0],tgt[1],tgt[2]);
     if(up) this._cam.up.set(up[0],up[1],up[2]);
@@ -784,12 +878,19 @@ export class LunarMission extends ModuleBase {
         this.rocket.position.copy(new THREE.Vector3(0,PARK,0)); this._pointUp(this.rocket, new THREE.Vector3(0.3,1,0).normalize());
         // 助推器分离：向后下翻滚坠落淡出
         const sep=this.boosters&&this.boosters.userData?this.boosters.userData.sep:null;
-        if(sep){ sep.t+=dt; const r=this.rocket.position;
-          this.boosters.position.copy(r).add(new THREE.Vector3(-sep.t*0.10, -sep.t*0.15, sep.t*0.03));
-          this.boosters.rotation.z=sep.t*2.2; this.boosters.rotation.x=sep.t*1.1;
-          const f=Math.max(0, 1-Math.max(0,sep.t-1.8)*1.0);
-          this.boosters.children.forEach(c=>{ if(c.material){ c.material=c.material.clone(); c.material.transparent=true; c.material.opacity=f; } });
-          if(f<=0) this.boosters.visible=false;
+        if(sep){ sep.t+=dt; const t=sep.t;
+          this.boosters.position.copy(this.rocket.position); this.boosters.quaternion.copy(this.rocket.quaternion);
+          const orb=(this.boosters.userData.orb||0.0140);
+          this.boosters.children.forEach((b,i)=>{ const d=b.userData.dir||new THREE.Vector3(1,0,0);
+            b.position.set(d.x*orb,0,d.z*orb)
+              .addScaledVector(d, t*0.085 + t*t*0.02)
+              .add(new THREE.Vector3(0, -t*t*0.055, 0));
+            b.rotation.set(t*2.6*(i%2?1:-1), t*1.7, t*3.3*(i<2?1:-1));
+            const f=Math.max(0, 1-Math.max(0,t-1.7)*0.85);
+            b.children.forEach(c=>{ if(c.material){ if(!c.userData._mt){ c.material=c.material.clone(); c.userData._mt=true; }
+              c.material.transparent=true; c.material.opacity=f; } });
+            if(f<=0) b.visible=false; });
+          if(t>3.6) this.boosters.visible=false;
         }
         break; }
       case 'EARTH_ORBIT': {
@@ -845,6 +946,8 @@ export class LunarMission extends ModuleBase {
     const i=ORDER.indexOf(this.phase);
     if(k>=1 && i>=0 && i<ORDER.length-1) this._setPhase(ORDER[i+1]);
     this._updateFlames(dt);
+    this._updateFairing(k);
+    this._updateBurst(dt);
     this._updateEnv();
     this._updateCamera(dt); this._updateHud();
   }
@@ -873,7 +976,7 @@ export class LunarMission extends ModuleBase {
     if(this.skyMat) this.skyMat.uniforms.uT.value=performance.now()/1000;
     if(this.starMat) this.starMat.uniforms.uA.value=Math.max(0, 1-skyA*1.1);
     // 地球/月球：地面段隐藏；SPHERE 后半段地球淡入（同时地面淡出）；离开地球后才见月球
-    const earthA=(ph==='SPHERE')?Math.max(0,Math.min(1,(kS-0.42)/0.40))
+    const earthA=(ph==='SPHERE')?Math.max(0,Math.min(1,(kS-0.20)/0.34))
       :(groundPh?0:1);
     if(this.earthGroup){ this.earthGroup.visible=earthA>0.01;
       if(this.earth&&this.earth.material){ this.earth.material.transparent=earthA<0.995; this.earth.material.opacity=earthA; }
@@ -883,7 +986,7 @@ export class LunarMission extends ModuleBase {
       :(ph==='SPHERE'?Math.max(0,Math.min(1,(kS-0.62)/0.30)):1);
     if(this.moonGroup) this.moonGroup.visible=moonA>0.01;
     // 地面：SPHERE 中段淡出（让位给地球球面）
-    if(this.siteGroup){ const sa=(ph==='SPHERE')?Math.max(0,1-Math.max(0,(kS-0.18))/0.46):(groundPh?1:0);
+    if(this.siteGroup){ const sa=(ph==='SPHERE')?Math.max(0,1-Math.max(0,(kS-0.10))/0.36):(groundPh?1:0);
       if(Math.abs(sa-(this._siteA===undefined?1:this._siteA))>0.002||sa===0||sa===1){ this._siteA=sa; this._fadeGroup(this.siteGroup, sa); } }
     // 大气雾：地面段生效制造地平线雾霭；升空后随地面一起退场，太空段彻底关闭。
     // 注意 near 必须始终小于 far —— 否则 three 的 smoothstep 会饱和到 1，整幅画面被雾色糊掉。
@@ -924,7 +1027,12 @@ export class LunarMission extends ModuleBase {
       case 'STAGE_SEP': {
         pos.copy(this.rocket.position).add(new THREE.Vector3(0.34,0.40,-0.44)); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
       case 'EARTH_ORBIT': {
-        pos.copy(this.rocket.position).add(new THREE.Vector3(-1.55, 1.05, -1.85)); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
+        // 贴近火箭：径向外 + 轨道面切向后退，地球弧线铺满背景（相机始终在地球外）
+        { const rp=this.rocket.position, out=rp.clone().normalize();
+          const tan=new THREE.Vector3(0,0,1).cross(out).normalize();
+          pos.copy(rp).addScaledVector(out,0.56).addScaledVector(tan,-0.46);
+          tgt.copy(rp); U.set(0,1,0); }
+        break; }
       case 'TRANSFER': {
         // 长推近：开始广(带地球+月球+椭圆参照=空间线), 越近月球越逼近
         const k=Math.min(this.pt/DUR.TRANSFER,1);
@@ -951,7 +1059,11 @@ export class LunarMission extends ModuleBase {
     const cam=this.ctx.camera;
     if(this._qaLock){ cam.position.copy(this._cam.pos); cam.up.copy(this._cam.up).normalize(); cam.lookAt(this._cam.tgt); return; }
     if(this._freeCam){ const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls; if(c){ c.target.copy(this.rocket.position); c.update(); } return; }   // 用户手动视角
-    const d=this._camDesired(), s=Math.min(1, dt*5);
+    const d=this._camDesired();
+    // 竖屏(手机)：水平视野窄，按比例把机位往后退，保证主体不被裁掉
+    const el=this.ctx.renderer.domElement, asp=((el&&el.clientWidth)||16)/((el&&el.clientHeight)||9);
+    if(asp<1.02){ const f=Math.min(1.75, 0.86/asp); d.pos.sub(d.tgt).multiplyScalar(f).add(d.tgt); }
+    const s=Math.min(1, dt*5);
     this._cam.pos.lerp(d.pos,s); this._cam.tgt.lerp(d.tgt,s); this._cam.up.lerp(d.up,s);
     cam.position.copy(this._cam.pos); cam.up.copy(this._cam.up).normalize(); cam.lookAt(this._cam.tgt);
   }

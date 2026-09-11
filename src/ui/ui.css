@@ -56,6 +56,10 @@ select,input[type=date],input[type=text]{background:var(--panel-solid);color:var
 body.info-open #scale-badge, body.info-open #moon-badge, body.info-open #view-tools{display:none}
 /* 奔月任务期间：隐藏全景常规 UI（行星菜单/工具条/角标），只留任务 HUD 与停止按钮 */
 body.mission-active #planet-menu, body.mission-active #view-tools, body.mission-active #scale-badge, body.mission-active #moon-badge, body.mission-active #info-panel{display:none}
+/* 手机端：电影任务期间收起顶栏/标签/底部时间条/星球条，给画面让位 */
+body.mission-active #m-top, body.mission-active #m-tabs, body.mission-active #m-time, body.mission-active #m-planets,
+body.mission-active #m-mid-space, body.mission-active #m-now, body.mission-active #m-info, body.mission-active #m-toast{display:none}
+@media (max-width:520px){ body.mission-active #mission-hud{left:8px!important;top:10px!important;min-width:0!important;max-width:calc(100vw - 16px)!important;padding:7px 10px!important} }
 #info-panel h2{font-size:calc(20px*var(--ui-s));margin-bottom:4px;color:var(--accent)}
 #info-panel .sub{color:var(--muted);font-size:calc(13px*var(--ui-s));margin-bottom:10px}
 #info-panel table{width:100%;border-collapse:collapse;font-size:calc(14px*var(--ui-s))}
