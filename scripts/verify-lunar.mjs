@@ -45,12 +45,20 @@ ok('无页面报错', perr.length===0, perr.join('; '));
 ok('升空段雾参数合法(near<far)', fogOk!==false, String(fogOk));
 
 const hasOk=await p.evaluate(()=>!!document.getElementById('mission-ok'));
-ok('成功提示有「确定」按钮', hasOk);
-if(hasOk){ await p.click('#mission-ok'); await sleep(500); }
+ok('成功提示有「继续看月面」按钮', hasOk);
+ok('成功提示有「退出演示」按钮', await p.evaluate(()=>!!document.getElementById('mission-exit')));
+// 主按钮只关弹窗：任务保持激活、留在月面、开放自由观察
+if(hasOk){ await p.click('#mission-ok'); await sleep(600); }
+const stayed=await p.evaluate(()=>({ active:window.__SS?.lunarMission?.active, phase:window.__SS?.lunarMission?.phase,
+  modal:!!document.getElementById('mission-success'), free:!!window.__SS?.lunarMission?._freeCam,
+  hud:!!document.getElementById('mission-hud') }));
+ok('点「继续看月面」后弹窗关闭但任务留在月面', stayed.active===true && stayed.phase==='LANDED' && !stayed.modal && stayed.free===true && stayed.hud===true, JSON.stringify(stayed));
+// 再点 HUD 上的「退出演示」才真正结束并还原
+await p.evaluate(()=>document.getElementById('mission-stop').click()); await sleep(600);
 const after=await p.evaluate(()=>({ active:window.__SS?.lunarMission?.active, phase:window.__SS?.lunarMission?.phase,
   hud:!!document.getElementById('mission-hud'), modal:!!document.getElementById('mission-success'),
   clockRun:window.__SS?.clock?.running, moonMode:window.__SS?.orbitView?.moonMode }));
-ok('点确定后模式自动关闭', after.active===false && after.phase==='IDLE' && !after.hud && !after.modal, JSON.stringify(after));
+ok('点「退出演示」后模式自动关闭', after.active===false && after.phase==='IDLE' && !after.hud && !after.modal, JSON.stringify(after));
 ok('任务结束恢复时钟运行', after.clockRun===true);
 const gfx=await p.evaluate(()=>({ tm:window.__SS?.renderer?.toneMapping, shadow:window.__SS?.renderer?.shadowMap?.enabled,
   fog:!!window.__SS?.lunarMission?._scene }));

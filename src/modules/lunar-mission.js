@@ -890,7 +890,7 @@ export class LunarMission extends ModuleBase {
     if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); if(this.speedArrows) this.speedArrows.visible=false; }
     if(p==='LUNAR_ORBIT'){ this.plumeC.visible=false; this._lam=0; this._reveal(this.lineLunar,0); this.lineTransfer.visible=false; }
     if(p==='LANDING'){ this._detachLander(); this.plumeC.visible=true; if(this.plumeC) this.plumeC.scale.setScalar(0.8); this.lineLunar.visible=false; this.linePark.visible=false; }
-    if(p==='LANDED'){ this.plumeC.visible=false; this._showSuccess(); }
+    if(p==='LANDED'){ this.plumeC.visible=false; this._freeTargetObj=this.change.userData.lander; this._showSuccess(); }
   }
   _hideLines(){ [this.linePark,this.lineTransfer,this.lineLunar].forEach(l=>{ if(l){ l.visible=false; if(l.geometry) l.geometry.setDrawRange(0,0); } }); if(this.speedArrows) this.speedArrows.visible=false; }
   _fadeWenchang(a){ this._fadeGroup(this.siteGroup, Math.max(0,Math.min(1,a))); }
@@ -1252,7 +1252,8 @@ export class LunarMission extends ModuleBase {
   _updateCamera(dt){
     const cam=this.ctx.camera;
     if(this._qaLock){ cam.position.copy(this._cam.pos); cam.up.copy(this._cam.up).normalize(); cam.lookAt(this._cam.tgt); return; }
-    if(this._freeCam){ const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls; if(c){ c.target.copy(this.rocket.position); c.update(); } return; }   // 用户手动视角
+    if(this._freeCam){ const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls; if(c){
+      if(this._freeTargetObj) this._freeTargetObj.getWorldPosition(c.target); else c.target.copy(this.rocket.position); c.update(); } return; }   // 用户手动视角
     const d=this._camDesired();
     // 竖屏(手机)：水平视野窄，按比例把机位往后退，保证主体不被裁掉
     const el=this.ctx.renderer.domElement, asp=((el&&el.clientWidth)||16)/((el&&el.clientHeight)||9);
@@ -1285,6 +1286,7 @@ export class LunarMission extends ModuleBase {
             <div id="mission-prog-dot" style="position:absolute;top:-3px;left:0%;width:12px;height:12px;border-radius:50%;background:#ffb454;border:2px solid #fff;transform:translateX(-50%)"></div>
           </div>
           <div id="mission-dist" style="font-size:10px;color:#9aa7bd">—</div>
+          <div id="mission-hint" style="display:none;font-size:10px;color:#7f8ea6;margin-top:3px">拖动旋转 · 滚轮缩放</div>
         </div>
         <button id="mission-stop" style="margin-top:5px;padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8ecf5;cursor:pointer">⏹ 停止任务</button>
       </div>`;
@@ -1336,16 +1338,43 @@ export class LunarMission extends ModuleBase {
     if(document.getElementById('mission-success')) return;
     const kid=isKidMode();
     const d=document.createElement('div'); d.id='mission-success';
-    d.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:80;display:flex;align-items:center;justify-content:center">
+    d.innerHTML=`<div id="mission-success-mask" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:80;display:flex;align-items:center;justify-content:center">
       <div style="background:#0c1224;border:1px solid rgba(255,180,84,.4);border-radius:14px;padding:26px 30px;text-align:center;max-width:88vw">
         <div style="font-size:44px">🌕</div><h3 style="color:#ffb454;margin:10px 0 6px;font-size:20px">${kid?'到月球啦！':'登陆月球成功'}</h3>
-        <p style="color:#9aa7bd;font-size:14px;margin-bottom:16px">${kid?'嫦娥稳稳地停在了月球上，我们成功啦。':'嫦娥已安全着陆月球。'}</p>
-        <button id="mission-ok" style="padding:10px 26px;border-radius:10px;border:none;background:#ffb454;color:#1a1208;font-size:15px;cursor:pointer;font-weight:600">确定</button>
+        <p style="color:#9aa7bd;font-size:14px;margin-bottom:14px">${kid?'嫦娥稳稳地停在了月球上，我们成功啦。':'嫦娥已安全着陆月球。'}</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button id="mission-ok" style="padding:10px 22px;border-radius:10px;border:none;background:#ffb454;color:#1a1208;font-size:15px;cursor:pointer;font-weight:600">${kid?'再看看月球':'继续看月面'}</button>
+          <button id="mission-exit" style="padding:10px 22px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:#cfd8e6;font-size:15px;cursor:pointer">退出演示</button>
+        </div>
+        <div style="color:#7f8ea6;font-size:12px;margin-top:10px">关闭后可以拖动鼠标 360° 观察月面与着陆器</div>
       </div></div>`;
     document.body.appendChild(d);
-    document.getElementById('mission-ok').addEventListener('click',()=>this.finish());
+    // 主按钮/点背景：只关弹窗，留在月面继续看；退出留给"退出演示"或 HUD 上的按钮
+    const stay=()=>{ this._closeSuccess(); this._stayOnSurface(); };
+    document.getElementById('mission-ok').addEventListener('click',stay);
+    document.getElementById('mission-exit').addEventListener('click',()=>this.finish());
+    document.getElementById('mission-success-mask').addEventListener('click',(e)=>{ if(e.target && e.target.id==='mission-success-mask') stay(); });
   }
-  _syncBtn(){ const b=document.getElementById('vt-mission'); if(b) b.textContent=this.active?'⏹ 停止任务':'🚀 嫦娥奔月'; const mb=document.getElementById('m-mission'); if(mb) mb.textContent=this.active?'⏹':'🚀'; }
+  _closeSuccess(){ const el=document.getElementById('mission-success'); if(el) el.remove(); }
+  // 弹窗关闭后：留在着陆画面上，并允许拖动观察月面/着陆器
+  _stayOnSurface(){
+    const b=document.getElementById('mission-stop'); if(b) b.textContent='⏹ 退出演示';
+    const hint=document.getElementById('mission-hint'); if(hint) hint.style.display='block';
+    const p=document.getElementById('mission-phase'); if(p) p.textContent=isKidMode()?'在月球上玩一玩':'已在月面 · 可自由观察';
+    const sub=document.getElementById('mission-sub'); if(sub) sub.textContent='拖动旋转 · 滚轮缩放 · 点「退出演示」结束';
+    const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls;
+    if(c&&!this._freeCam){
+      if(!this._saveMinMax) this._saveMinMax={ min:c.minDistance, max:c.maxDistance };
+      c.minDistance=0.05; c.maxDistance=0.9;
+      const lander=this.change&&this.change.userData&&this.change.userData.lander;
+      this._freeTargetObj=lander||this.rocket;
+      lander.getWorldPosition(c.target);
+      this.ctx.camera.position.copy(c.target).addScaledVector(this._landUp,-0.01).addScaledVector(this._landTangent,0.26);
+      c.enabled=true; this._freeCam=true;
+    }
+  }
+  _syncBtn(){ const st=document.getElementById('mission-stop'); if(st&&this.phase!=='LANDED') st.textContent='⏹ 停止任务';
+    const b=document.getElementById('vt-mission'); if(b) b.textContent=this.active?'⏹ 停止任务':'🚀 嫦娥奔月'; const mb=document.getElementById('m-mission'); if(mb) mb.textContent=this.active?'⏹':'🚀'; }
 
   finish(){ this._teardown(); bus.emit('toast',{text:'嫦娥奔月演示完成',level:'ok'}); }
   cancel(){ this._teardown(); }
@@ -1356,7 +1385,7 @@ export class LunarMission extends ModuleBase {
     if(this._saved.labelsOn&&ctx.orbitView&&!ctx.orbitView.labelsVisible) ctx.orbitView.toggleLabels();
     if(ctx.labelRenderer) ctx.labelRenderer.domElement.style.display=this._labelDisp==='none'?'none':'';
     if(ctx.cameraRig&&ctx.cameraRig.controls){ ctx.cameraRig.controls.enabled=this._saved.controlsOn!==false; if(this._saveMinMax){ ctx.cameraRig.controls.minDistance=this._saveMinMax.min; ctx.cameraRig.controls.maxDistance=this._saveMinMax.max; } }
-    this._freeCam=false;
+    this._freeCam=false; this._freeTargetObj=null;
     ctx.camera.up.set(0,1,0);
     if(wasActive&&ctx.cameraRig&&ctx.cameraRig.reset) ctx.cameraRig.reset();
     this.disposeScene(this._scene); this._scene=null;
