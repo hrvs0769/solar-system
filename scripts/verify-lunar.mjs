@@ -28,9 +28,12 @@ ok('任务期时钟冻结', await p.evaluate(()=>window.__SS?.clock?.running===f
 
 const seq=[];
 let okModal=false;
+let fogOk=null;   // 回归保护：雾 near 必须小于 far（曾因 near>far 让整幅画面被雾色糊掉）
 for(let i=0;i<420;i++){
   const ph=await p.evaluate(()=>window.__SS?.lunarMission?.phase);
   if(seq[seq.length-1]!==ph) seq.push(ph);
+  if(ph==='SPHERE'&&fogOk===null) fogOk=await p.evaluate(()=>{ const f=window.__SS?.lunarMission?.scene?.fog;
+    return f? (f.near<f.far) : true; });
   okModal=await p.evaluate(()=>!!document.getElementById('mission-success'));
   if(okModal) break;
   await sleep(700);
@@ -39,6 +42,7 @@ const expect=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT
 ok('阶段序列完整且顺序正确', expect.every(x=>seq.includes(x)) && seq[0]==='COUNTDOWN' && seq[seq.length-1]==='LANDED', JSON.stringify(seq));
 ok('着陆后弹出成功提示', okModal);
 ok('无页面报错', perr.length===0, perr.join('; '));
+ok('升空段雾参数合法(near<far)', fogOk!==false, String(fogOk));
 
 const hasOk=await p.evaluate(()=>!!document.getElementById('mission-ok'));
 ok('成功提示有「确定」按钮', hasOk);

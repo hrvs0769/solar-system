@@ -102,15 +102,15 @@ function hullTex(){ if(_hullTex) return _hullTex; _hullTex=mkTex(1024,1024,(g,w,
   for(let i=0;i<26;i++){ const y=i/26*h; g.fillStyle='rgba(112,108,98,.20)'; g.fillRect(0,y,w,1.6); }
   for(let i=0;i<260;i++){ const x=Math.random()*w,y=Math.random()*h,r=4+Math.random()*30;
     const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,'rgba(96,92,82,.10)'); gr.addColorStop(1,'rgba(96,92,82,0)'); g.fillStyle=gr; g.fillRect(x-r,y-r,r*2,r*2); }
-  [0.5,0.15].forEach(u=>{ const cx=u*w, cy=h*0.40;
+  [0.5,0.15].forEach(u=>{ const cx=u*w, cy=h*0.34;
     g.textAlign='center';
     g.save(); g.translate(cx,cy);
-    g.fillStyle='#c8102e'; g.font='bold 62px "PingFang SC",sans-serif'; g.fillText('中国航天',0,0);
-    g.fillStyle='#12386e'; g.font='bold 40px sans-serif'; g.fillText('CZ-5',0,54);
-    g.fillStyle='#8a1a1a'; g.font='bold 34px "PingFang SC",sans-serif'; g.fillText('嫦娥奔月',0,102);
-    g.fillStyle='#de2910'; g.fillRect(-42,124,84,56);                       // 国旗
-    g.fillStyle='#ffde00'; g.beginPath(); g.arc(-24,140,7,0,7); g.fill();
-    g.fillStyle='#ffde00'; g.beginPath(); g.arc(-6,152,4,0,7); g.fill();
+    g.fillStyle='#c8102e'; g.font='bold 118px "PingFang SC",sans-serif'; g.fillText('中国航天',0,0);
+    g.fillStyle='#12386e'; g.font='bold 78px sans-serif'; g.fillText('CZ-5',0,96);
+    g.fillStyle='#8a1a1a'; g.font='bold 62px "PingFang SC",sans-serif'; g.fillText('嫦娥奔月',0,176);
+    g.fillStyle='#de2910'; g.fillRect(-80,214,160,106);                    // 国旗
+    g.fillStyle='#ffde00'; g.beginPath(); g.arc(-46,244,13,0,7); g.fill();
+    g.fillStyle='#ffde00'; g.beginPath(); g.arc(-8,268,8,0,7); g.fill();
     g.restore(); }); }); return _hullTex; }
 // 整流罩：白漆 + 红/蓝带 + 标识
 function fairTex(){ if(_fairTex) return _fairTex; _fairTex=mkTex(512,512,(g,w,h)=>{
@@ -289,12 +289,18 @@ function buildFacilities(){
   const bw=0.17,bh=0.135,bd=0.105;
   const body=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd), wallMat); body.position.y=bh/2; body.castShadow=true; body.receiveShadow=true; vab.add(body);
   const cornice=new THREE.Mesh(new THREE.BoxGeometry(bw+0.004,0.004,bd+0.004), roofMat); cornice.position.y=bh+0.002; cornice.castShadow=true; vab.add(cornice);
-  for(let i=0;i<=10;i++){ const px=-bw/2+i/10*bw; const col=new THREE.Mesh(new THREE.BoxGeometry(0.004,bh,0.004), roofMat);
-    col.position.set(px,bh/2,bd/2+0.0006); vab.add(col); }
-  const glass=new THREE.Mesh(new THREE.BoxGeometry(bw*0.96,0.010,0.0016), glassMat); glass.position.set(0,bh*0.74,bd/2+0.0012); vab.add(glass);
+  for(let i=0;i<=10;i++){ const px=-bw/2+i/10*bw;
+    [1,-1].forEach(sz=>{ const col=new THREE.Mesh(new THREE.BoxGeometry(0.004,bh,0.004), roofMat);
+      col.position.set(px,bh/2,sz*(bd/2+0.0006)); col.castShadow=true; vab.add(col); }); }
+  [1,-1].forEach(sz=>{ const glass=new THREE.Mesh(new THREE.BoxGeometry(bw*0.96,0.010,0.0016), glassMat);
+    glass.position.set(0,bh*0.74,sz*(bd/2+0.0012)); vab.add(glass); });
+  for(let i=0;i<4;i++){ const v=new THREE.Mesh(new THREE.BoxGeometry(0.020,0.006,0.030), roofMat);   // 屋顶通风器
+    v.position.set(-bw*0.3+i*bw*0.2, bh+0.005, 0); v.castShadow=true; vab.add(v); }
   const door=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.085,0.0022), new THREE.MeshStandardMaterial({color:0x6f7580, metalness:.6, roughness:.5}));
   door.position.set(0,0.0425,bd/2+0.0012); vab.add(door);
   const doorSeam=new THREE.Mesh(new THREE.BoxGeometry(0.0015,0.085,0.0026), roofMat); doorSeam.position.set(0,0.0425,bd/2+0.0016); vab.add(doorSeam);
+  const door2=door.clone(); door2.position.z=-(bd/2+0.0012); vab.add(door2);
+  const doorSeam2=doorSeam.clone(); doorSeam2.position.z=-(bd/2+0.0016); vab.add(doorSeam2);
   vab.position.set(0.40,0,0.20); vab.rotation.y=-0.42; g.add(vab);
   // 低温贮罐区：球罐 + 立式罐 + 管路
   const tankMat=new THREE.MeshStandardMaterial({color:0xe6e9ec, metalness:.35, roughness:.35});
@@ -518,14 +524,23 @@ export class LunarMission extends ModuleBase {
 
     // —— 天空：渐变 + 太阳光晕 + 地平线雾霭（升空后淡出为太空黑）——
     this.skyMat=new THREE.ShaderMaterial({
-      uniforms:{ uA:{value:1}, uTop:{value:new THREE.Color(0x2f6fc8)}, uHor:{value:new THREE.Color(0xd6e6f2)}, uSun:{value:this.sunDir.clone()} },
+      uniforms:{ uA:{value:1}, uT:{value:0}, uCloud:{value:0.55}, uTop:{value:new THREE.Color(0x2f6fc8)}, uHor:{value:new THREE.Color(0xd6e6f2)}, uSun:{value:this.sunDir.clone()} },
       vertexShader:`varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-      fragmentShader:`uniform float uA; uniform vec3 uTop; uniform vec3 uHor; uniform vec3 uSun; varying vec3 vP;
+      fragmentShader:`uniform float uA; uniform float uT; uniform float uCloud; uniform vec3 uTop; uniform vec3 uHor; uniform vec3 uSun; varying vec3 vP;
+        float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+        float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+          return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),f.x), mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),f.x), f.y); }
+        float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<5;i++){ v+=a*vnoise(p); p*=2.03; a*=0.5; } return v; }
         void main(){ vec3 d=normalize(vP); float h=clamp(d.y*0.5+0.5,0.0,1.0);
           vec3 c=mix(uHor,uTop,pow(h,1.25));
           float s=max(dot(d,normalize(uSun)),0.0);
           c+=vec3(1.0,0.94,0.80)*pow(s,320.0)*2.2;      // 太阳盘
           c+=vec3(1.0,0.88,0.70)*pow(s,14.0)*0.30;      // 光晕
+          vec2 uv=d.xz/max(abs(d.y)+0.10,0.06)+vec2(uT*0.0035,uT*0.0012);
+          float n=fbm(uv*1.35);
+          float cl=smoothstep(0.46,0.80,n)*smoothstep(0.015,0.20,d.y)*uCloud;   // 云带
+          vec3 cc=mix(vec3(0.86,0.89,0.93), vec3(1.0,1.0,1.0), pow(s,3.0));
+          c=mix(c,cc,cl);
           c=mix(c,uHor,clamp(1.0-abs(d.y)*7.0,0.0,1.0)*0.55);  // 地平线雾霭
           gl_FragColor=vec4(c, uA); }`,
       side:THREE.BackSide, transparent:true, depthWrite:false });
@@ -533,9 +548,9 @@ export class LunarMission extends ModuleBase {
 
     // —— 地球（贴图 + 云层 + 大气边缘辉光）——
     this.earthGroup=new THREE.Group();
-    const earth=new THREE.Mesh(new THREE.SphereGeometry(RE,80,80), new THREE.MeshStandardMaterial({color:0xffffff, roughness:.74, metalness:.02}));
+    const earth=new THREE.Mesh(new THREE.SphereGeometry(RE,80,80), new THREE.MeshStandardMaterial({color:0x27527f, roughness:.74, metalness:.02}));   // 贴图未就绪时先呈海洋蓝
     const clouds=new THREE.Mesh(new THREE.SphereGeometry(RE*1.006,64,64), new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:.92, depthWrite:false, roughness:1}));
-    this._loadTex('earth', t=>{ if(t&&earth.material){ earth.material.map=t; earth.material.needsUpdate=true; } });
+    this._loadTex('earth', t=>{ if(t&&earth.material){ earth.material.map=t; earth.material.color.set(0xffffff); earth.material.needsUpdate=true; } });
     try{ textureStore.clouds().then(t=>{ if(t){ clouds.material.map=t; clouds.material.alphaMap=t; clouds.material.needsUpdate=true; } }).catch(()=>{}); }catch(e){}
     const atmMat=new THREE.ShaderMaterial({
       uniforms:{ uA:{value:1}, uColor:{value:new THREE.Color(0x74b4ff)}, uSun:{value:this.sunDir.clone()} },
@@ -547,13 +562,14 @@ export class LunarMission extends ModuleBase {
       transparent:true, blending:THREE.AdditiveBlending, side:THREE.BackSide, depthWrite:false });
     const atm=new THREE.Mesh(new THREE.SphereGeometry(RE*1.045,48,32), atmMat);
     this.earthGroup.add(earth); this.earthGroup.add(clouds); this.earthGroup.add(atm);
+    this.earthGroup.rotation.set(-Math.PI/2, 0, 0.30);   // 让发射点(世界+Y)落到中纬度海陆区，而不是北极冰盖
     this.earthGroup.visible=false; sc.add(this.earthGroup);
     this.earth=earth; this.earthClouds=clouds; this.atmMat=atmMat;
 
     // —— 月球（贴图 + 以亮度作凹凸，出真实环形山起伏）——
     const moon=new THREE.Mesh(new THREE.SphereGeometry(RM,72,72), new THREE.MeshStandardMaterial({color:0xdedbd3, roughness:.95, metalness:0}));
     moon.name='moon'; moon.position.set(MD,0,0); moon.receiveShadow=true; moon.castShadow=false;
-    this._loadTex('moon', t=>{ if(t&&moon.material){ moon.material.map=t; moon.material.bumpMap=t; moon.material.bumpScale=0.02; moon.material.needsUpdate=true; } });
+    this._loadTex('moon', t=>{ if(t&&moon.material){ moon.material.map=t; moon.material.bumpMap=t; moon.material.bumpScale=0.02; moon.material.color.set(0xffffff); moon.material.needsUpdate=true; } });
     this.moon=moon; this.moonGroup=new THREE.Group(); this.moonGroup.visible=false; this.moonGroup.add(moon); sc.add(this.moonGroup);
     this.lunarPatch=buildLunarPatch(); sc.add(this.lunarPatch);
 
@@ -853,7 +869,8 @@ export class LunarMission extends ModuleBase {
     let skyA=1;
     if(ph==='SPHERE') skyA=Math.max(0, 1-kS/0.80);
     else if(!groundPh) skyA=0;
-    if(this.skyMat) this.skyMat.uniforms.uA.value=skyA;
+    if(this.skyMat){ this.skyMat.uniforms.uA.value=skyA; this.skyMat.uniforms.uT.value=this._tEnv=(this._tEnv||0)+0.0; }
+    if(this.skyMat) this.skyMat.uniforms.uT.value=performance.now()/1000;
     if(this.starMat) this.starMat.uniforms.uA.value=Math.max(0, 1-skyA*1.1);
     // 地球/月球：地面段隐藏；SPHERE 后半段地球淡入（同时地面淡出）；离开地球后才见月球
     const earthA=(ph==='SPHERE')?Math.max(0,Math.min(1,(kS-0.42)/0.40))
@@ -868,9 +885,13 @@ export class LunarMission extends ModuleBase {
     // 地面：SPHERE 中段淡出（让位给地球球面）
     if(this.siteGroup){ const sa=(ph==='SPHERE')?Math.max(0,1-Math.max(0,(kS-0.18))/0.46):(groundPh?1:0);
       if(Math.abs(sa-(this._siteA===undefined?1:this._siteA))>0.002||sa===0||sa===1){ this._siteA=sa; this._fadeGroup(this.siteGroup, sa); } }
-    // 大气雾：地面段近，升空推远（等于关闭）
-    if(this.fog){ const f=(ph==='SPHERE')?6.0+kS*900 : (groundPh?6.0:1e5);
-      this.fog.far=f; this.fog.near=groundPh?1.0:1e5-1; }
+    // 大气雾：地面段生效制造地平线雾霭；升空后随地面一起退场，太空段彻底关闭。
+    // 注意 near 必须始终小于 far —— 否则 three 的 smoothstep 会饱和到 1，整幅画面被雾色糊掉。
+    if(this.fog){
+      const gf = groundPh ? 1 : (ph==='SPHERE' ? Math.max(0, 1-kS/0.55) : 0);
+      if(gf>0.001){ this.fog.near=1.0; this.fog.far=6.0+(1-gf)*1e6; }
+      else { this.fog.near=1e6; this.fog.far=1e6+1; }
+    }
     // 阴影范围跟随主体：发射场(小) → 绕地球(中) → 月球着陆(小)
     if(this.sun){ let c=this._site, r=0.58, far=60;
       if(groundPh){ c=this._site; r=0.58; far=60; }
@@ -890,21 +911,24 @@ export class LunarMission extends ModuleBase {
         // 低角度英雄镜头(拉远看全火箭): 从 -Z 侧仰视火箭+塔架
         pos.set(-0.12, RE+0.05, -0.34); tgt.copy(site).add(new THREE.Vector3(0,0.08,0)); U.set(0,1,0); break; }
       case 'LIFTOFF': {
-        // 平视→仰视：相机留台边，随火箭升高而抬升视线
-        pos.set(-0.12, RE+0.05, -0.36); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
+        // 相机边升边退：始终把发射场留在画面下缘，同时火箭不失去主体地位
+        const k=Math.min(this.pt/DUR.LIFTOFF,1), ke=ease(k);
+        pos.set(0.14+ke*0.16, RE+0.05+ke*0.30, -0.40-ke*0.34);
+        tgt.copy(this.rocket.position).lerp(new THREE.Vector3(0,RE+0.12,0), 0.30-ke*0.22); U.set(0,1,0); break; }
       case 'SPHERE': {
-        // 敬畏段落：相机升高, 地面→球面; 后段(球面出现)停顿2~3秒
+        // 敬畏段落：相机随火箭抬高并缓慢后拉，地球弧线从下方展开(揭示"地球是个球")
         const q=Math.min(this.pt/DUR.SPHERE,1), rq=ease(Math.min(q/0.72,1));
-        const h=RE+0.25 + rq*4.2;
-        pos.set(1.5, h, -2.6); tgt.set(0, RE*0.55, 0); U.set(0,1,0); break; }
+        const rp=this.rocket.position;
+        pos.set(1.55+rq*1.35, rp.y+0.26+rq*0.34, -0.92-rq*0.66);   // 侧向机位：看地球中低纬度海陆，而不是极冠
+        tgt.copy(rp).add(new THREE.Vector3(0,-0.30-rq*0.55,0)); U.set(0,1,0); break; }
       case 'STAGE_SEP': {
-        pos.set(0.85, 1.95, -1.35); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
+        pos.copy(this.rocket.position).add(new THREE.Vector3(0.34,0.40,-0.44)); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
       case 'EARTH_ORBIT': {
         pos.copy(this.rocket.position).add(new THREE.Vector3(-1.55, 1.05, -1.85)); tgt.copy(this.rocket.position); U.set(0,1,0); break; }
       case 'TRANSFER': {
         // 长推近：开始广(带地球+月球+椭圆参照=空间线), 越近月球越逼近
         const k=Math.min(this.pt/DUR.TRANSFER,1);
-        const r=1.05 - k*0.55;   // 广→近(以卫星为主体)
+        const r=0.72 - k*0.34;   // 广→近(以卫星为主体)
         pos.copy(this.change.position).add(new THREE.Vector3(-0.55*r, 0.42*r, -0.72*r)); tgt.copy(this.change.position); U.set(0,1,0); break; }
       case 'LOI': {
         pos.copy(this.change.position).add(new THREE.Vector3(0.30, 0.52, -0.42)); tgt.copy(this.change.position); U.set(0,1,0); break; }

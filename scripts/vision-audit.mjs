@@ -57,7 +57,14 @@ const page = await browser.newPage();
 const errors = []; page.on('pageerror', e => errors.push(e.message));
 await page.evaluateOnNewDocument(() => { try { localStorage.setItem('ss-guide-done', '1'); } catch {} });
 await page.goto(base, { waitUntil: 'load', timeout: 60000 });
-await sleep(5000);   // 等贴图
+// 等贴图仓库全部就绪（否则地球/月球还是无贴图的纯色球，会把加载时序误判成画质问题）
+for (let i = 0; i < 120; i++) {
+  const done = await page.evaluate(() => { try { const p = window.__SS?.lunarMission?.ctx ? null : null; return null; } catch { return null; } });
+  const pr = await page.evaluate(() => { try { return window.__SS && window.__SS.textureProgress ? window.__SS.textureProgress() : null; } catch { return null; } });
+  if (pr && pr.loaded >= pr.total) break;
+  await sleep(500);
+}
+await sleep(1500);
 
 // —— 页内拍摄原语 ——
 await page.evaluate(() => {

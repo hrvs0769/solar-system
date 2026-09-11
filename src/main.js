@@ -230,7 +230,7 @@ async function boot(){
   setTimeout(()=>maybeShowGuide(), 1200);   // 首次打开引导
 
   /* 调试暴露（供截图自检读取渲染/场景状态） */
-  window.__SS = { THREE, renderer, get scene(){ return system.scene; }, get camera(){ return camera; }, get starfield(){ return system.starfield; }, cameraRig, clock, quality, bus, get orbitView(){ return orbitView; }, moonPhases, eclipse, satellite, lunarMission, music, get currentId(){ return currentId; } };
+  window.__SS = { textureProgress: () => textureStore.progress(), THREE, renderer, get scene(){ return system.scene; }, get camera(){ return camera; }, get starfield(){ return system.starfield; }, cameraRig, clock, quality, bus, get orbitView(){ return orbitView; }, moonPhases, eclipse, satellite, lunarMission, music, get currentId(){ return currentId; } };
 }
 
 boot().catch(err=>{
