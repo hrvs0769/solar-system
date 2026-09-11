@@ -14,7 +14,7 @@ const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:6.5, SPHERE:9, STAGE_SEP:4, EAR
 const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'分级脱离', EARTH_ORBIT:'地球轨道', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
 const PHASE_NAME_KID={ COUNTDOWN:'倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'看看地球', STAGE_SEP:'助推器分离', EARTH_ORBIT:'绕地球飞', TRANSFER:'飞向月球', LOI:'踩刹车', LUNAR_ORBIT:'绕月飞行', LANDING:'准备降落', LANDED:'着陆月球' };
 const WHY={ COUNTDOWN:'一切就绪，等待点火', IGNITION:'火焰 + 导流槽水雾喷涌', LIFTOFF:'突破大气，逐渐摆脱地球引力',
-  SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'分级脱离：多级更省燃料', EARTH_ORBIT:'抛掉整流罩(已出大气层) · 绕地球一圈获得入轨速度',
+  SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'分级脱离：多级更省燃料', EARTH_ORBIT:'一级分离 → 抛整流罩 → 绕地球一圈获得入轨速度',
   TRANSFER:'上面级分离，嫦娥卫星出舱 · 为什么不是直线飞？沿椭圆最省燃料', LOI:'为什么必须制动？不减速会飞过月球', LUNAR_ORBIT:'嫦娥绕月探测，寻找落点',
   LANDING:'反推减速 → 缓缓降落', LANDED:'已在月球表面' };
 const WHY_KID={ COUNTDOWN:'数到零，火箭就出发', IGNITION:'点火！屁股后面喷出大火', LIFTOFF:'飞起来啦，越飞越高',
@@ -292,9 +292,35 @@ function bellGeo(rt,re,h,seg=18){ const pts=[]; const n=10;
 // —— 发射场：海风草原 + 混凝土发射区 + 导流槽 + 发射台 ——
 function buildGround(){
   const g=new THREE.Group();
-  const terrainMat=new THREE.MeshStandardMaterial({map:groundTex(), roughness:.98, metalness:0});
-  const terrain=new THREE.Mesh(new THREE.CircleGeometry(6.5,96), terrainMat);
-  terrain.rotation.x=-Math.PI/2; terrain.receiveShadow=true; g.add(terrain);
+  // —— 大地：陆地在 -X 侧、海在 +X 侧，海岸线 x=+2.5（≈770m，真实发射场离海的量级）——
+  const COAST=2.5, EXT=70;
+  const landTex=groundTex().clone(); landTex.needsUpdate=true;
+  landTex.wrapS=landTex.wrapT=THREE.RepeatWrapping; landTex.repeat.set(14,14);
+  const terrainMat=new THREE.MeshStandardMaterial({map:landTex, roughness:.98, metalness:0});
+  const land=new THREE.Mesh(new THREE.PlaneGeometry(EXT,EXT), terrainMat);
+  land.rotation.x=-Math.PI/2; land.position.set(COAST-EXT/2,0,0); land.receiveShadow=true; g.add(land);
+  const seaMat=new THREE.MeshStandardMaterial({color:0x24506f, roughness:.18, metalness:.35});
+  const sea=new THREE.Mesh(new THREE.PlaneGeometry(EXT,EXT), seaMat);
+  sea.rotation.x=-Math.PI/2; sea.position.set(COAST+EXT/2,-0.010,0); sea.receiveShadow=true; g.add(sea);
+  const beach=new THREE.Mesh(new THREE.PlaneGeometry(0.16,EXT), new THREE.MeshStandardMaterial({color:0xbfb394, roughness:.98}));
+  beach.rotation.x=-Math.PI/2; beach.position.set(COAST-0.08,0.0012,0); g.add(beach);
+  // 远处树林（合并成一个网格）：给地平线一条深色林带，避免"空旷荒原"
+  { const parts=[], tr=mkrng(7788);
+    for(let i=0;i<260;i++){ const a=tr()*Math.PI*2, d=1.6+tr()*7.5;
+      const x=-Math.abs(Math.cos(a))*d+0.6, z=(tr()-0.5)*14;                   // 只种在陆地一侧
+      if(x>COAST-0.25) continue;
+      const h=0.030+tr()*0.030, w=0.014+tr()*0.012;
+      const trunk=new THREE.CylinderGeometry(0.0016,0.0022,h*0.35,5); trunk.translate(x,h*0.175,z); parts.push(trunk);
+      const c1=new THREE.ConeGeometry(w,h*0.62,7); c1.translate(x,h*0.36+h*0.31,z); parts.push(c1);
+      const c2=new THREE.ConeGeometry(w*0.72,h*0.46,7); c2.translate(x,h*0.36+h*0.52,z); parts.push(c2); }
+    const trees=new THREE.Mesh(mergeGeometries(parts), new THREE.MeshStandardMaterial({color:0x33502f, roughness:.95, metalness:0}));
+    trees.castShadow=false; trees.receiveShadow=false; g.add(trees); }
+  // 远处设施剪影（储罐/塔架/建筑）
+  { const far=new THREE.Group(); const fm=new THREE.MeshStandardMaterial({color:0x9aa0a6, roughness:.8, metalness:.2});
+    [[-3.2,1.1,0.06,0.05],[-4.4,-0.9,0.10,0.07],[3.9,-2.4,0.05,0.04],[-2.2,2.6,0.08,0.05]].forEach(([x,z,w2,h2])=>{
+      const b=new THREE.Mesh(new THREE.BoxGeometry(w2,h2,w2*0.8), fm); b.position.set(x,h2/2,z); far.add(b); });
+    const st=new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.010,0.09,8), fm); st.position.set(-2.9,0.045,1.9); far.add(st);
+    g.add(far); }
   const concMat=new THREE.MeshStandardMaterial({map:concTex(), roughness:.9, metalness:0});
   const concMat2=concMat.clone(); concMat2.map=concTex().clone(); concMat2.map.needsUpdate=true;
   concMat2.map.wrapS=concMat2.map.wrapT=THREE.RepeatWrapping; concMat2.map.repeat.set(6,6);
@@ -471,34 +497,35 @@ function buildRocket(){
   const fairMat=new THREE.MeshStandardMaterial({map:fairTex(), roughness:.40, metalness:.10});
   const dark=new THREE.MeshStandardMaterial({color:0x4b5058, metalness:.78, roughness:.42});
   const bell=new THREE.MeshStandardMaterial({color:0x353a41, metalness:.9, roughness:.34, side:THREE.DoubleSide});
+  const stage1=new THREE.Group(), stage2=new THREE.Group(); g.add(stage1); g.add(stage2);
   // 一级（含发动机舱）
-  const engBay=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.04,RC*1.06,0.012,32), dark); engBay.position.y=0.006; engBay.castShadow=true; g.add(engBay);
-  const s1=new THREE.Mesh(new THREE.CylinderGeometry(RC,RC,0.101,40,1), hull); s1.position.y=0.0625; s1.castShadow=true; s1.receiveShadow=true; g.add(s1);
+  const engBay=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.04,RC*1.06,0.012,32), dark); engBay.position.y=0.006; engBay.castShadow=true; stage1.add(engBay);
+  const s1=new THREE.Mesh(new THREE.CylinderGeometry(RC,RC,0.101,40,1), hull); s1.position.y=0.0625; s1.castShadow=true; s1.receiveShadow=true; stage1.add(s1);
   // 电缆罩
-  const race=new THREE.Mesh(new THREE.BoxGeometry(0.0032,0.101,0.0026), hull2); race.position.set(RC+0.0012,0.0625,-0.001); race.castShadow=true; g.add(race);
+  const race=new THREE.Mesh(new THREE.BoxGeometry(0.0032,0.101,0.0026), hull2); race.position.set(RC+0.0012,0.0625,-0.001); race.castShadow=true; stage1.add(race);
   // 一级环缝
-  [0.030,0.075].forEach(y=>{ const r=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.008,RC*1.008,0.0016,40), dark); r.position.y=y; g.add(r); });
+  [0.030,0.075].forEach(y=>{ const r=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.008,RC*1.008,0.0016,40), dark); r.position.y=y; stage1.add(r); });
   // 级间段
-  const inter=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.01,RC*1.01,0.0055,36), dark); inter.position.y=0.1155; inter.castShadow=true; g.add(inter);
+  const inter=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.01,RC*1.01,0.0055,36), dark); inter.position.y=0.1155; inter.castShadow=true; stage2.add(inter);
   // 二级
-  const s2=new THREE.Mesh(new THREE.CylinderGeometry(RC*0.98,RC*0.98,0.0225,36), hull2); s2.position.y=0.1295; s2.castShadow=true; g.add(s2);
+  const s2=new THREE.Mesh(new THREE.CylinderGeometry(RC*0.98,RC*0.98,0.0225,36), hull2); s2.position.y=0.1295; s2.castShadow=true; stage2.add(s2);
   // 载荷适配器（整流罩抛掉后可见）
-  const adapter=new THREE.Mesh(new THREE.CylinderGeometry(RC*0.80,RC*0.95,0.010,28), dark); adapter.position.y=0.1425; adapter.castShadow=true; g.add(adapter);
+  const adapter=new THREE.Mesh(new THREE.CylinderGeometry(RC*0.80,RC*0.95,0.010,28), dark); adapter.position.y=0.1425; adapter.castShadow=true; stage2.add(adapter);
   const payl=new THREE.Mesh(new THREE.BoxGeometry(0.014,0.014,0.016), new THREE.MeshStandardMaterial({map:goldTex(), metalness:.7, roughness:.45, bumpMap:mliBump(), bumpScale:0.0016}));
-  payl.position.y=0.1545; payl.castShadow=true; g.add(payl);
+  payl.position.y=0.1545; payl.castShadow=true; stage2.add(payl);
   // 整流罩：两瓣（沿 YZ 面对开，铰链在根部）
   fairMat.side=THREE.DoubleSide;
   const fairL=new THREE.Group(), fairR=new THREE.Group();
-  fairL.position.y=0.1405; fairR.position.y=0.1405; g.add(fairL); g.add(fairR);
+  fairL.position.y=0.1405; fairR.position.y=0.1405; stage2.add(fairL); stage2.add(fairR);
   const shellL=new THREE.Mesh(ogive(RC*1.10,0.030,18,0.016,0,Math.PI), fairMat); shellL.castShadow=true; fairL.add(shellL);
   const shellR=new THREE.Mesh(ogive(RC*1.10,0.030,18,0.016,Math.PI,Math.PI), fairMat); shellR.castShadow=true; fairR.add(shellR);
   const capL=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.10,RC*1.10,0.004,18,1,true,0,Math.PI), dark); capL.position.y=0.002; fairL.add(capL);
   const capR=new THREE.Mesh(new THREE.CylinderGeometry(RC*1.10,RC*1.10,0.004,18,1,true,Math.PI,Math.PI), dark); capR.position.y=0.002; fairR.add(capR);
   g.userData.fairL=fairL; g.userData.fairR=fairR; g.userData.fairMat=fairMat;
   // 芯级两台发动机构型（YF-77）
-  [[-1],[1]].forEach(([s])=>{ const b=new THREE.Mesh(bellGeo(0.0016,0.0042,0.014,20), bell); b.position.set(s*RC*0.44,-0.007,0); b.castShadow=true; g.add(b);
-    const turb=new THREE.Mesh(new THREE.SphereGeometry(0.0022,10,8), dark); turb.position.set(s*RC*0.44,-0.0015,0.0055); g.add(turb); });
-  g.userData.height=0.185; g.userData.radius=RC;
+  [[-1],[1]].forEach(([s])=>{ const b=new THREE.Mesh(bellGeo(0.0016,0.0042,0.014,20), bell); b.position.set(s*RC*0.44,-0.007,0); b.castShadow=true; stage1.add(b);
+    const turb=new THREE.Mesh(new THREE.SphereGeometry(0.0022,10,8), dark); turb.position.set(s*RC*0.44,-0.0015,0.0055); stage1.add(turb); });
+  g.userData.height=0.185; g.userData.radius=RC; g.userData.stage1=stage1; g.userData.stage2=stage2; g.userData.stageSplit=0.113;
   return g;
 }
 // —— 4 台助推器（3.35m 直径，含头锥、尾裙、喷管）——
@@ -599,8 +626,8 @@ function buildBurst(){ const N=300, geo=new THREE.BufferGeometry(), arr=new Floa
   const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[]}; pts.renderOrder=2; return pts; }
 function buildSteam(){ const N=800, geo=new THREE.BufferGeometry(), arr=new Float32Array(N*3); geo.setAttribute('position',new THREE.BufferAttribute(arr,3));
   for(let i=0;i<N;i++) arr[i*3+1]=-999;
-  const mat=new THREE.PointsMaterial({color:0xf2f5f8, size:0.09, map:blobTex(), transparent:true, opacity:0, depthWrite:false, sizeAttenuation:true, alphaTest:0.01});
-  const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[]}; pts.renderOrder=2; return pts; }
+  const mat=new THREE.PointsMaterial({color:0xf4f7fa, size:0.105, map:blobTex(), transparent:true, opacity:0, depthWrite:false, sizeAttenuation:true, alphaTest:0.01});
+  const pts=new THREE.Points(geo,mat); pts.visible=false; pts.userData={parts:[],N:800}; pts.renderOrder=2; return pts; }
 
 export class LunarMission extends ModuleBase {
   constructor(ctx){
@@ -718,7 +745,7 @@ export class LunarMission extends ModuleBase {
     this.siteGroup.add(this.ground); this.siteGroup.add(this.tower); this.siteGroup.add(this.facilities);
     sc.add(this.siteGroup);
     // 地平线雾：地面段制造大气透视(远景融进雾霭)，升空后把 far 推远等于关闭
-    this.fog=new THREE.Fog(0xcadcec, 1.0, 6.0); sc.fog=this.fog;
+    this.fog=new THREE.Fog(0xcadcec, 1.2, 16.0); sc.fog=this.fog;
 
     // —— 星空（飞出海平面后显现，闪烁）——
     { const n=1200, pos=new Float32Array(n*3), ph=new Float32Array(n);
@@ -733,7 +760,7 @@ export class LunarMission extends ModuleBase {
     // —— 火箭 / 助推器 / 嫦娥 / 尾焰 / 烟云 ——
     this.rocket=buildRocket(); this.boosters=buildBoosters(); this.change=buildChange();
     this.plumeR=buildPlume(); this.plumeC=buildPlume(1.0,true); this.steam=buildSteam(); this.burst=buildBurst();
-    this.rocket.add(this.plumeR); this.change.add(this.plumeC); this.plumeC.scale.setScalar(2.6);
+    this.rocket.userData.stage1.add(this.plumeR); this.change.add(this.plumeC); this.plumeC.scale.setScalar(2.6);
     [this.rocket,this.boosters,this.change,this.steam,this.burst].forEach(o=>{ this.scene.add(o); });
     this.linePark=this._mkLine(k=>this._park(k*Math.PI*2), 0x7fd0ff);
     this.lineTransfer=this._mkLine(k=>this._transfer(k*Math.PI), 0xffd54a);
@@ -814,6 +841,9 @@ export class LunarMission extends ModuleBase {
   _enterPhase(p){
     if(p==='COUNTDOWN'){ this.rocket.visible=true; this.boosters.visible=true; this.change.visible=false; this.steam.visible=false; this.plumeR.visible=false; this.plumeC.visible=false;
       this._fairK=0; this._applyFairing(0);
+      this._stageK=0; if(this.rocket&&this.rocket.userData){ this.rocket.userData.stage1.visible=true;
+        this.rocket.userData.stage1.traverse(o=>{ if(o.material&&o.userData._mt){ o.material.opacity=1; o.material.transparent=false; } }); }
+      this._applyStaging(0);
       if(this.boosters) this.boosters.children.forEach(b=>{ b.visible=true; b.position.set((b.userData.dir.x)*(this.boosters.userData.orb||0.014),0,(b.userData.dir.z)*(this.boosters.userData.orb||0.014)); b.rotation.set(0,0,0);
         b.children.forEach(c=>{ if(c.material&&c.userData._mt){ c.material.opacity=1; c.material.transparent=false; } }); });
       this.rocket.position.copy(this._site).add(new THREE.Vector3(0,0.006,0)); this._pointUp(this.rocket, new THREE.Vector3(0,1,0));
@@ -855,9 +885,29 @@ export class LunarMission extends ModuleBase {
     const idx=ORDER.indexOf(this.phase);
     let target=0;
     // 真实顺序：助推器分离(STAGE_SEP) → 出大气层后抛整流罩(EARTH_ORBIT 前段) → 入轨
-    if(this.phase==='EARTH_ORBIT') target=Math.max(0,Math.min(1,(k-0.06)/0.30));
+    if(this.phase==='EARTH_ORBIT') target=Math.max(0,Math.min(1,(k-0.26)/0.30));
     else if(idx>ORDER.indexOf('EARTH_ORBIT')) target=1;
     if(target>(this._fairK||0)+1e-4){ this._fairK=target; this._applyFairing(target); }
+  }
+  // —— 一级/二级分离（EARTH_ORBIT 最前段）：上面级留在原点，一级落后并淡出 ——
+  _applyStaging(a){
+    const u=this.rocket&&this.rocket.userData; if(!u||!u.stage1) return;
+    const split=u.stageSplit||0.113;
+    const slide=Math.min(1,a/0.45), drift=Math.max(0,(a-0.30)/0.70);
+    u.stage2.position.y=-split*slide;                       // 上面级滑到原点(任务坐标随之稳定)
+    u.stage1.position.set(drift*0.010, -drift*0.34, 0);
+    u.stage1.rotation.z=drift*0.10;
+    if(drift>0){ const f=Math.max(0,1-Math.max(0,drift-0.42)*1.5);
+      u.stage1.traverse(o=>{ if(o.material){ if(!o.userData._mt){ o.material=o.material.clone(); o.userData._mt=true; }
+        o.material.transparent=true; o.material.opacity=f; } });
+      u.stage1.visible=f>0.01; }
+  }
+  _updateStaging(k){
+    const idx=ORDER.indexOf(this.phase), ei=ORDER.indexOf('EARTH_ORBIT');
+    let target=0;
+    if(this.phase==='EARTH_ORBIT') target=Math.max(0,Math.min(1,(k-0.02)/0.16));
+    else if(idx>ei) target=1;
+    if(target>(this._stageK||0)+1e-4){ this._stageK=target; this._applyStaging(target); }
   }
   // —— 分离白烟粒子池 ——
   _spawnBurst(pos, n=70, speed=0.30){
@@ -884,22 +934,37 @@ export class LunarMission extends ModuleBase {
   _syncBoosters(){ if(!this.boosters||!this.boosters.visible) return; const sep=this.boosters.userData&&this.boosters.userData.sep; if(sep) return; this.boosters.position.copy(this.rocket.position); this.boosters.quaternion.copy(this.rocket.quaternion); }
 
   _pointUp(obj,dir){ if(!obj||!dir||dir.lengthSq()<1e-10) return; obj.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize()); }
-  _spawnSteam(){
-    const pts=this.steam, N=320, arr=pts.geometry.attributes.position.array;
-    pts.userData.parts=[];
-    for(let i=0;i<N;i++){ const a=Math.random()*Math.PI*2, r=0.01+Math.random()*0.06;
-      const x=this._site.x+Math.cos(a)*r, y=RE+0.003+Math.random()*0.02, z=this._site.z+Math.sin(a)*r;
-      pts.userData.parts.push({x,y,z,vx:Math.cos(a)*(0.04+Math.random()*0.06), vy:0.015+Math.random()*0.05, vz:Math.sin(a)*(0.04+Math.random()*0.06), life:1, s:0.7+Math.random()*0.8}); }
-    pts.userData.parts.forEach((p,i)=>{ arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z; });
-    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=0.85;
+  // 发射烟云：持续发射(点火后沿地面铺开) + 上升抬升 + 淡出
+  _emitSteam(n){
+    const pts=this.steam; if(!pts) return;
+    const parts=pts.userData.parts, N=pts.userData.N||800;
+    for(let i=parts.length-1;i>=0;i--) if(parts[i].life<=0) parts.splice(i,1);
+    for(let i=0;i<n && parts.length<N;i++){
+      const a=Math.random()*Math.PI*2, r=0.008+Math.random()*0.05;
+      const sp=0.055+Math.random()*0.10;
+      parts.push({ x:this._site.x+Math.cos(a)*r, y:RE+0.002+Math.random()*0.016, z:this._site.z+Math.sin(a)*r,
+        vx:Math.cos(a)*sp, vy:0.012+Math.random()*0.055, vz:Math.sin(a)*sp, life:1.6+Math.random()*1.8, spin:Math.random()*6 });
+    }
+    pts.visible=parts.length>0;
   }
+  _spawnSteam(){ this.steam.userData.parts.length=0; this._emitSteam(260); }
   _updateSteam(dt){
-    const pts=this.steam, arr=pts.geometry.attributes.position.array;
-    if(!pts.visible || !pts.userData.parts) return; let alive=0;
-    pts.userData.parts.forEach((p,i)=>{ p.life-=dt*0.5; p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt; p.vy+=0.05*dt; p.vx*=0.985; p.vz*=0.985;
-      if(p.life>0){ alive++; arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z; } else arr[i*3+1]=-999; });
-    pts.geometry.attributes.position.needsUpdate=true; pts.material.opacity=Math.max(0, alive/320*0.85);
-    if(alive===0) pts.visible=false;
+    const pts=this.steam; if(!pts||!pts.userData.parts) return;
+    // 点火→升空前段持续喷水/排烟，升空后逐步停止
+    let rate=0;
+    if(this.phase==='IGNITION') rate=170;
+    else if(this.phase==='LIFTOFF') rate=Math.max(0, 150-this.pt*30);
+    if(rate>0 && !this._qaLock){ this._emitAcc=(this._emitAcc||0)+rate*dt; const n=Math.floor(this._emitAcc); if(n>0){ this._emitAcc-=n; this._emitSteam(n); } }
+    if(!pts.visible) return;
+    const arr=pts.geometry.attributes.position.array, parts=pts.userData.parts;
+    let alive=0;
+    for(let i=0;i<parts.length;i++){ const p=parts[i]; p.life-=dt;
+      p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt;
+      p.vy+=0.045*dt; p.vx*=0.988; p.vz*=0.988;
+      if(p.life>0){ alive++; arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z; } else arr[i*3+1]=-999; }
+    pts.geometry.attributes.position.needsUpdate=true;
+    pts.material.opacity=Math.max(0, Math.min(0.9, alive/260*0.9));
+    if(alive===0){ pts.visible=false; parts.length=0; }
   }
   _dust(pos){ if(!this._dustPts){ const n=60, g=new THREE.BufferGeometry(), a=new Float32Array(n*3); g.setAttribute('position',new THREE.BufferAttribute(a,3));
       this._dustPts=new THREE.Points(g, new THREE.PointsMaterial({color:0xccc4b0, size:0.014, map:softDot(), transparent:true, opacity:0.7, depthWrite:false, sizeAttenuation:true})); this.scene.add(this._dustPts); this._dustArr=a; this._dustN=n; }
@@ -1040,6 +1105,7 @@ export class LunarMission extends ModuleBase {
     const i=ORDER.indexOf(this.phase);
     if(k>=1 && i>=0 && i<ORDER.length-1) this._setPhase(ORDER[i+1]);
     this._updateFlames(dt);
+    this._updateStaging(k);
     this._updateFairing(k);
     this._updateBurst(dt);
     this._updateEnv();
@@ -1086,7 +1152,7 @@ export class LunarMission extends ModuleBase {
     // 注意 near 必须始终小于 far —— 否则 three 的 smoothstep 会饱和到 1，整幅画面被雾色糊掉。
     if(this.fog){
       const gf = groundPh ? 1 : (ph==='SPHERE' ? Math.max(0, 1-kS/0.55) : 0);
-      if(gf>0.001){ this.fog.near=1.0; this.fog.far=6.0+(1-gf)*1e6; }
+      if(gf>0.001){ this.fog.near=1.2; this.fog.far=16.0+(1-gf)*1e6; }
       else { this.fog.near=1e6; this.fog.far=1e6+1; }
     }
     // 阴影范围跟随主体：发射场(小) → 绕地球(中) → 月球着陆(小)
