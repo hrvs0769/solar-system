@@ -127,6 +127,44 @@ function panelTex(){ if(_panelTex) return _panelTex; _panelTex=mkTex(512,512,(g,
   for(let x=0;x<w;x+=64){ g.fillStyle='rgba(120,126,134,.28)'; g.fillRect(x,0,1.6,h); }
   for(let i=0;i<420;i++){ const x=Math.random()*w,y=Math.random()*h,r=3+Math.random()*22;
     const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,'rgba(96,100,106,.12)'); gr.addColorStop(1,'rgba(96,100,106,0)'); g.fillStyle=gr; g.fillRect(x-r,y-r,r*2,r*2); } },{repeat:[1,1]}); return _panelTex; }
+function craterTex(){ return mkTex(1024,1024,(g,w,h)=>{
+  g.fillStyle='#a5a199'; g.fillRect(0,0,w,h);
+  for(let i=0;i<70;i++){ const x=Math.random()*w,y=Math.random()*h,r=90+Math.random()*260;      // 月海暗斑
+    const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,'rgba(104,101,96,.34)'); gr.addColorStop(1,'rgba(104,101,96,0)');
+    g.fillStyle=gr; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }
+  for(let i=0;i<4200;i++){ const v=Math.random()*48-24; g.fillStyle=`rgba(${150+v},${147+v},${140+v},.55)`; g.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*3,1+Math.random()*3); }
+  const crater=(x,y,r,deep)=>{
+    g.save(); g.translate(x,y); g.scale(1,0.86+Math.random()*0.2); g.rotate(Math.random()*3);
+    let gr=g.createRadialGradient(0,0,0,0,0,r);                                                  // 坑底
+    gr.addColorStop(0,`rgba(64,62,59,${0.52*deep})`); gr.addColorStop(0.5,`rgba(86,83,79,${0.42*deep})`);
+    gr.addColorStop(0.82,`rgba(126,122,116,${0.18*deep})`); gr.addColorStop(1,'rgba(150,146,140,0)');
+    g.fillStyle=gr; g.beginPath(); g.arc(0,0,r,0,7); g.fill();
+    gr=g.createRadialGradient(0,0,r*0.78,0,0,r*1.08);                                            // 柔和坑缘亮环
+    gr.addColorStop(0,'rgba(214,210,202,0)'); gr.addColorStop(0.5,`rgba(216,212,204,${0.26*deep})`); gr.addColorStop(1,'rgba(214,210,202,0)');
+    g.fillStyle=gr; g.beginPath(); g.arc(0,0,r*1.08,0,7); g.fill();
+    g.restore();
+  };
+  for(let i=0;i<300;i++) crater(Math.random()*w,Math.random()*h,12+Math.random()*86,0.85+Math.random()*0.35);
+  for(let i=0;i<1500;i++) crater(Math.random()*w,Math.random()*h,3+Math.random()*10,0.5+Math.random()*0.5);
+},{repeat:[1,1]}); }
+// 月面近景：球形帽(撞击坑贴图) + 碎石，落在着陆点正下方
+function buildLunarPatch(){
+  const g=new THREE.Group();
+  const capA=Math.asin(Math.min(0.9,0.30/RM));
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(RM*1.003,64,40,0,Math.PI*2,0,capA),
+    new THREE.MeshStandardMaterial({map:craterTex(), roughness:.98, metalness:0}));
+  cap.receiveShadow=true; g.add(cap);
+  const rockMat=new THREE.MeshStandardMaterial({color:0x6e6b65, roughness:.98, metalness:0, flatShading:true});
+  for(let i=0;i<9;i++){ const a=Math.random()*Math.PI*2, d=0.06+Math.random()*0.18;
+    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(0.0035+Math.random()*0.006,0), rockMat);
+    const r0=Math.sqrt(Math.max(0.0001,RM*RM-d*d))-0.0016;
+    rock.position.set(Math.cos(a)*d, r0, Math.sin(a)*d);
+    rock.scale.set(1,0.34+Math.random()*0.3,0.8+Math.random()*0.5);
+    rock.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);
+    rock.castShadow=true; rock.receiveShadow=true; g.add(rock); }
+  g.visible=false;
+  return g;
+}
 function goldTex(){ if(_goldTex) return _goldTex; _goldTex=mkTex(128,64,g=>{ g.fillStyle='#8a6a1e'; g.fillRect(0,0,128,64); for(let y=0;y<64;y+=2){ const b=0.72+0.28*((y*31)%9)/9; g.fillStyle=`rgb(${Math.round(190*b)},${Math.round(140*b)},${Math.round(45*b)})`; g.fillRect(0,y,128,2); } }); return _goldTex; }
 function solarTex(){ if(_solarTex) return _solarTex; _solarTex=mkTex(128,64,g=>{ g.fillStyle='#06132e'; g.fillRect(0,0,128,64); for(let y=0;y<4;y++)for(let x=0;x<8;x++){ const b=0.26+0.16*((x*7+y*13)%9)/9; g.fillStyle=`rgb(${Math.round(18+b*50)},${Math.round(45+b*70)},${Math.round(110+b*95)})`; g.fillRect(x*16+1,y*16+1,14,14); } for(let x=0;x<=8;x++){ g.strokeStyle='rgba(210,230,255,.3)'; g.beginPath(); g.moveTo(x*16,0); g.lineTo(x*16,64); g.stroke(); } for(let y=0;y<=4;y++){ g.beginPath(); g.moveTo(0,y*16); g.lineTo(128,y*16); g.stroke(); } }); return _solarTex; }
 
@@ -261,14 +299,24 @@ function buildFacilities(){
   // 低温贮罐区：球罐 + 立式罐 + 管路
   const tankMat=new THREE.MeshStandardMaterial({color:0xe6e9ec, metalness:.35, roughness:.35});
   const pipeMat=new THREE.MeshStandardMaterial({color:0xa8aeb6, metalness:.7, roughness:.4});
-  [-0.20,-0.245].forEach((x,i)=>{ const s=new THREE.Mesh(new THREE.SphereGeometry(0.013,20,16), tankMat);
-    s.position.set(x,0.030,0.10+i*0.028); s.castShadow=true; g.add(s);
-    for(let k=0;k<4;k++){ const a=k*Math.PI/2+Math.PI/4; const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.0012,0.0012,0.026,8), pipeMat);
-      leg.position.set(x+Math.cos(a)*0.009,0.013,0.10+i*0.028+Math.sin(a)*0.009); g.add(leg); }
-    const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.0012,0.0012,0.03,8), pipeMat);
-    pipe.rotation.z=Math.PI/2; pipe.position.set(x+0.022,0.004,0.10+i*0.028); g.add(pipe); });
-  const vt=new THREE.Mesh(new THREE.CylinderGeometry(0.010,0.010,0.030,20), tankMat); vt.position.set(-0.15,0.015,-0.02); vt.castShadow=true; g.add(vt);
-  const vcap=new THREE.Mesh(new THREE.SphereGeometry(0.010,20,10,0,Math.PI*2,0,Math.PI/2), tankMat); vcap.position.set(-0.15,0.030,-0.02); g.add(vcap);
+  { const farm=new THREE.Group(); farm.position.set(-0.215,0,0.115);
+    // 围堰
+    const bund=new THREE.Mesh(new THREE.BoxGeometry(0.062,0.006,0.062), new THREE.MeshStandardMaterial({map:concTex(), roughness:.94}));
+    bund.position.y=0.003; bund.castShadow=true; bund.receiveShadow=true; farm.add(bund);
+    const bundIn=new THREE.Mesh(new THREE.BoxGeometry(0.052,0.007,0.052), new THREE.MeshStandardMaterial({color:0x8e8b84, roughness:.95}));
+    bundIn.position.y=0.0035; farm.add(bundIn);
+    const pipeR=[];
+    [[-0.017,-0.017],[0.017,0.014]].forEach(([x,z])=>{                                 // 两台立式储罐
+      const t=new THREE.Mesh(new THREE.CylinderGeometry(0.0115,0.0115,0.030,20), tankMat); t.position.set(x,0.022,z); t.castShadow=true; farm.add(t);
+      const c=new THREE.Mesh(new THREE.SphereGeometry(0.0115,20,12,0,Math.PI*2,0,Math.PI/2), tankMat); c.position.set(x,0.037,z); c.castShadow=true; farm.add(c);
+      const r=new THREE.Mesh(new THREE.TorusGeometry(0.0117,0.0008,6,20), pipeMat); r.rotation.x=Math.PI/2; r.position.set(x,0.030,z); farm.add(r);
+      member(pipeR, x,0.008,z, 0.0,0.008,0.0, 0.0016); });
+    member(pipeR, 0,0.008,0, 0.048,0.008,0.030, 0.0020);                               // 外输管
+    member(pipeR, -0.017,0.012,-0.017, 0.017,0.012,0.014, 0.0014);
+    farm.add(new THREE.Mesh(mergeGeometries(pipeR), pipeMat));
+    g.add(farm); }
+  const vt=new THREE.Mesh(new THREE.CylinderGeometry(0.009,0.009,0.026,20), tankMat); vt.position.set(-0.15,0.013,-0.02); vt.castShadow=true; g.add(vt);
+  const vcap=new THREE.Mesh(new THREE.SphereGeometry(0.009,20,10,0,Math.PI*2,0,Math.PI/2), tankMat); vcap.position.set(-0.15,0.026,-0.02); g.add(vcap);
   // 控制中心：两层 + 窗带 + 屋顶设备
   const ctl=new THREE.Group();
   const cw=0.05,ch=0.020,cd=0.028;
@@ -278,13 +326,40 @@ function buildFacilities(){
   const rf=new THREE.Mesh(new THREE.BoxGeometry(cw*0.98,0.002,cd*0.98), roofMat); rf.position.y=ch+0.001; ctl.add(rf);
   const ac=new THREE.Mesh(new THREE.BoxGeometry(0.008,0.004,0.008), pipeMat); ac.position.set(0.008,ch+0.004,0); ctl.add(ac);
   ctl.position.set(-0.30,0,-0.13); ctl.rotation.y=0.7; g.add(ctl);
-  // 水塔（发射降噪喷水）
-  const wt=new THREE.Group();
-  const col=new THREE.Mesh(new THREE.CylinderGeometry(0.0035,0.005,0.030,10), concMat); col.position.y=0.015; col.castShadow=true; wt.add(col);
-  const tank=new THREE.Mesh(new THREE.CylinderGeometry(0.010,0.010,0.014,16), new THREE.MeshStandardMaterial({color:0xdfe3e7, metalness:.3, roughness:.5}));
-  tank.position.y=0.037; tank.castShadow=true; wt.add(tank);
-  const roof=new THREE.Mesh(new THREE.ConeGeometry(0.011,0.006,16), roofMat); roof.position.y=0.047; wt.add(roof);
-  wt.position.set(0.16,0,-0.20); g.add(wt);
+  // 水塔（发射降噪喷水）：四腿桁架 + 大水箱 + 降液管
+  const wt=new THREE.Group(); { const H=0.052, hw=0.011, pr=[];
+    for(const [sx,sz] of [[-hw,-hw],[hw,-hw],[-hw,hw],[hw,hw]]) member(pr,sx,0,sz,sx,H,sz,0.0018);
+    for(let i=1;i<=5;i++){ const y=i/5*H;
+      member(pr,-hw,y,-hw,hw,y,-hw,0.0012); member(pr,-hw,y,hw,hw,y,hw,0.0012);
+      member(pr,-hw,y,-hw,-hw,y,hw,0.0012); member(pr,hw,y,-hw,hw,y,hw,0.0012); }
+    for(let i=0;i<5;i++){ const y0=i/5*H, y1=(i+1)/5*H;
+      member(pr,i%2?-hw:hw,y0,-hw, i%2?hw:-hw,y1,-hw,0.0011); member(pr,i%2?-hw:hw,y0,hw, i%2?hw:-hw,y1,hw,0.0011); }
+    const legs=new THREE.Mesh(mergeGeometries(pr), new THREE.MeshStandardMaterial({color:0x9aa2ae, metalness:.7, roughness:.45}));
+    legs.castShadow=true; wt.add(legs);
+    const tank=new THREE.Mesh(new THREE.CylinderGeometry(0.019,0.019,0.020,18), new THREE.MeshStandardMaterial({color:0xdfe3e7, metalness:.3, roughness:.45}));
+    tank.position.y=H+0.010; tank.castShadow=true; wt.add(tank);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(0.020,0.008,18), roofMat); roof.position.y=H+0.024; wt.add(roof);
+    member(pr,0.011,0.006,0.011, 0.011,H,0.011, 0.0001);   // 占位(管路另建)
+    const down=new THREE.Mesh(new THREE.CylinderGeometry(0.0022,0.0022,H,10), pipeMat); down.position.set(0.012,H/2,0.012); wt.add(down); }
+  wt.position.set(0.20,0,-0.24); g.add(wt);
+  // 周界围栏 + 照明灯杆（把空旷场地"围"起来，提供尺度参照）
+  { const fence=new THREE.Group(); const R=0.40, step=0.05;
+    const posts=[];
+    for(let x=-R;x<=R+1e-6;x+=step){ member(posts,x,0,-R,x,0.010,-R,0.0009); member(posts,x,0,R,x,0.010,R,0.0009); }
+    for(let z=-R;z<=R+1e-6;z+=step){ member(posts,-R,0,z,-R,0.010,z,0.0009); member(posts,R,0,z,R,0.010,z,0.0009); }
+    member(posts,-R,0.0085,-R,R,0.0085,-R,0.0006); member(posts,-R,0.0055,-R,R,0.0055,-R,0.0005);
+    member(posts,-R,0.0085,R,R,0.0085,R,0.0006);   member(posts,-R,0.0055,R,R,0.0055,R,0.0005);
+    member(posts,-R,0.0085,-R,-R,0.0085,R,0.0006); member(posts,-R,0.0055,-R,-R,0.0055,R,0.0005);
+    member(posts,R,0.0085,-R,R,0.0085,R,0.0006);   member(posts,R,0.0055,-R,R,0.0055,R,0.0005);
+    const fm=new THREE.Mesh(mergeGeometries(posts), new THREE.MeshStandardMaterial({color:0x8d949c, metalness:.6, roughness:.6}));
+    fm.castShadow=true; fence.add(fm); g.add(fence); }
+  [[-0.30,-0.30],[0.30,-0.30],[-0.30,0.30],[0.30,0.30]].forEach(([x,z])=>{     // 照明灯杆
+    const lp=new THREE.Group();
+    const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.0012,0.0022,0.058,10), new THREE.MeshStandardMaterial({color:0x8d949c, metalness:.65, roughness:.5}));
+    mast.position.y=0.029; mast.castShadow=true; lp.add(mast);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.010,0.0035,0.004), new THREE.MeshStandardMaterial({color:0x3d434b, metalness:.7, roughness:.4}));
+    head.position.set(0.004,0.057,0); head.rotation.z=-0.35; lp.add(head);
+    lp.position.set(x,0,z); g.add(lp); });
   // 避雷塔三座（远景轮廓）
   [[0.6,-0.6],[-0.75,0.45],[0.85,0.5]].forEach(([x,z])=>{
     const t=new THREE.Mesh(new THREE.CylinderGeometry(0.0015,0.003,0.075,6), new THREE.MeshStandardMaterial({color:0x8b929b, metalness:.6, roughness:.5, transparent:true}));
@@ -327,7 +402,7 @@ function buildBoosters(){
   const skin=new THREE.MeshStandardMaterial({color:0xeceae4, roughness:.5, metalness:.16});
   const dark=new THREE.MeshStandardMaterial({color:0x4b5058, metalness:.78, roughness:.42});
   const bell=new THREE.MeshStandardMaterial({color:0x353a41, metalness:.9, roughness:.34, side:THREE.DoubleSide});
-  [0,1,2,3].forEach(i=>{ const a=i*Math.PI/2, cx=Math.cos(a)*ORB, cz=Math.sin(a)*ORB;
+  [0,1,2,3].forEach(i=>{ const a=i*Math.PI/2+Math.PI/4, cx=Math.cos(a)*ORB, cz=Math.sin(a)*ORB;
     const body=new THREE.Mesh(new THREE.CylinderGeometry(BR,BR,BH,26), skin); body.position.set(cx,BH/2,cz); body.castShadow=true; body.receiveShadow=true; g.add(body);
     const nose=new THREE.Mesh(ogive(BR,0.0145,14,0.002), skin); nose.position.set(cx,BH,cz); nose.castShadow=true; g.add(nose);
     const skirt=new THREE.Mesh(new THREE.CylinderGeometry(BR*1.08,BR*1.12,0.007,24), dark); skirt.position.set(cx,0.0015,cz); skirt.castShadow=true; g.add(skirt);
@@ -349,12 +424,21 @@ function buildChange(){
   for(let i=0;i<4;i++){ const a=i*Math.PI/2+Math.PI/4; const th=new THREE.Mesh(bellGeo(0.0012,0.0032,0.009,12), dark);
     th.position.set(Math.cos(a)*0.016,0.019,Math.sin(a)*0.016); g.add(th); }
   const lander=new THREE.Group(); lander.name='lander'; lander.position.y=-0.045;
-  const body=new THREE.Mesh(new THREE.BoxGeometry(0.042,0.034,0.042), metal); body.castShadow=true; body.receiveShadow=true; lander.add(body);
-  const top=new THREE.Mesh(new THREE.ConeGeometry(0.022,0.028,12), gold); top.position.y=0.031; top.castShadow=true; lander.add(top);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.042,0.034,0.042), gold); body.castShadow=true; body.receiveShadow=true; lander.add(body);
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(0.044,0.004,0.044), metal); deck.position.y=0.019; deck.castShadow=true; lander.add(deck);
+  const top=new THREE.Mesh(new THREE.ConeGeometry(0.022,0.028,12), gold); top.position.y=0.032; top.castShadow=true; lander.add(top);
+  const pane=new THREE.Mesh(new THREE.BoxGeometry(0.026,0.012,0.0018), new THREE.MeshStandardMaterial({color:0x1b2a44, metalness:.5, roughness:.25, emissive:0x101c33, emissiveIntensity:.5}));
+  pane.position.set(0,0.004,0.0215); lander.add(pane);
   const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.023,0.023,0.004,16), dark); ring.position.y=0.016; lander.add(ring);
-  for(let i=0;i<4;i++){ const a=i*Math.PI/2+Math.PI/4; const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.0032,0.0032,0.045,10), metal);
-    leg.position.set(Math.cos(a)*0.034,-0.036,Math.sin(a)*0.034); leg.rotation.z=-Math.cos(a)*0.7; leg.rotation.x=Math.sin(a)*0.7; leg.castShadow=true; lander.add(leg);
-    const foot=new THREE.Mesh(new THREE.CylinderGeometry(0.0065,0.0065,0.0022,12), metal); foot.position.set(Math.cos(a)*0.049,-0.056,Math.sin(a)*0.049); foot.castShadow=true; lander.add(foot); }
+  { const parts=[];
+    for(let i=0;i<4;i++){ const a=i*Math.PI/2+Math.PI/4, cx=Math.cos(a), cz=Math.sin(a);
+      member(parts, cx*0.019,-0.013,cz*0.019, cx*0.050,-0.052,cz*0.050, 0.0034);          // 主腿
+      member(parts, cx*0.008,-0.004,cz*0.008, cx*0.036,-0.040,cz*0.036, 0.0022);          // 斜撑
+      member(parts, cx*0.050,-0.052,cz*0.050, cx*0.030,-0.052,cz*0.030, 0.0024); }        // 横拉
+    const legs=new THREE.Mesh(mergeGeometries(parts), metal); legs.castShadow=true; lander.add(legs);
+    for(let i=0;i<4;i++){ const a=i*Math.PI/2+Math.PI/4;
+      const foot=new THREE.Mesh(new THREE.CylinderGeometry(0.0072,0.0062,0.0026,14), metal);
+      foot.position.set(Math.cos(a)*0.050,-0.0535,Math.sin(a)*0.050); foot.castShadow=true; lander.add(foot); } }
   const noz=new THREE.Mesh(bellGeo(0.004,0.011,0.02,16), dark); noz.position.y=-0.026; lander.add(noz);
   g.add(lander);
   g.userData.lander=lander; g.userData.svc=svc;
@@ -419,7 +503,7 @@ export class LunarMission extends ModuleBase {
     r.shadowMap.enabled=true; r.shadowMap.type=THREE.PCFSoftShadowMap;
 
     // —— 太阳：平行光（地面与太空共用同一光源）+ 软阴影 ——
-    this.sunDir=new THREE.Vector3(-0.68,0.62,-0.39).normalize();
+    this.sunDir=new THREE.Vector3(-0.78,0.56,-0.31).normalize();
     this.sun=new THREE.DirectionalLight(0xfff3e0, 2.9);
     this.sun.castShadow=true;
     const SM=((this.ctx.quality&&this.ctx.quality.tier&&this.ctx.quality.tier.id==='low')?1024:2048);
@@ -471,6 +555,7 @@ export class LunarMission extends ModuleBase {
     moon.name='moon'; moon.position.set(MD,0,0); moon.receiveShadow=true; moon.castShadow=false;
     this._loadTex('moon', t=>{ if(t&&moon.material){ moon.material.map=t; moon.material.bumpMap=t; moon.material.bumpScale=0.02; moon.material.needsUpdate=true; } });
     this.moon=moon; this.moonGroup=new THREE.Group(); this.moonGroup.visible=false; this.moonGroup.add(moon); sc.add(this.moonGroup);
+    this.lunarPatch=buildLunarPatch(); sc.add(this.lunarPatch);
 
     // —— 环境反射（IBL）：程序化 equirect 天空（含阳光下光斑），金属才不会发黑 ——
     this._buildEnvMap(sc);
@@ -591,7 +676,7 @@ export class LunarMission extends ModuleBase {
     if(p==='TRANSFER'){ this.change.visible=true; this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; this._transSepT=0; }
     if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); if(this.speedArrows) this.speedArrows.visible=false; }
     if(p==='LUNAR_ORBIT'){ this.plumeC.visible=false; this._lam=0; this._reveal(this.lineLunar,0); this.lineTransfer.visible=false; }
-    if(p==='LANDING'){ this._detachLander(); this.plumeC.visible=true; if(this.plumeC) this.plumeC.scale.setScalar(0.8); }
+    if(p==='LANDING'){ this._detachLander(); this.plumeC.visible=true; if(this.plumeC) this.plumeC.scale.setScalar(0.8); this.lineLunar.visible=false; this.linePark.visible=false; }
     if(p==='LANDED'){ this.plumeC.visible=false; this._showSuccess(); }
   }
   _hideLines(){ [this.linePark,this.lineTransfer,this.lineLunar].forEach(l=>{ if(l){ l.visible=false; if(l.geometry) l.geometry.setDrawRange(0,0); } }); if(this.speedArrows) this.speedArrows.visible=false; }
@@ -902,7 +987,9 @@ export class LunarMission extends ModuleBase {
     this._landSite=mc.clone().addScaledVector(this._landUp, RM+0.045);           // 落点(着陆器原点, 腿刚好触地)
     this._landTangent=this.sunDir.clone().addScaledVector(this._landUp,-this.sunDir.dot(this._landUp)).normalize();  // 向阳侧切向
     ch.remove(lander); this.scene.add(lander); lander.position.copy(wp);
-    ch.remove(this.plumeC); lander.add(this.plumeC); this._landerStart=wp.clone(); }
+    ch.remove(this.plumeC); lander.add(this.plumeC); this._landerStart=wp.clone();
+    if(this.lunarPatch){ const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), this._landUp);
+      this.lunarPatch.position.copy(mc); this.lunarPatch.quaternion.copy(q); this.lunarPatch.visible=true; } }
   _showSuccess(){
     if(document.getElementById('mission-success')) return;
     const kid=isKidMode();

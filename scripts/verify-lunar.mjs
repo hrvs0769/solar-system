@@ -48,6 +48,9 @@ const after=await p.evaluate(()=>({ active:window.__SS?.lunarMission?.active, ph
   clockRun:window.__SS?.clock?.running, moonMode:window.__SS?.orbitView?.moonMode }));
 ok('点确定后模式自动关闭', after.active===false && after.phase==='IDLE' && !after.hud && !after.modal, JSON.stringify(after));
 ok('任务结束恢复时钟运行', after.clockRun===true);
+const gfx=await p.evaluate(()=>({ tm:window.__SS?.renderer?.toneMapping, shadow:window.__SS?.renderer?.shadowMap?.enabled,
+  fog:!!window.__SS?.lunarMission?._scene }));
+ok('任务结束还原色调映射/阴影等全局渲染设置', gfx.tm===0 && gfx.shadow===false, JSON.stringify(gfx));
 ok('任务结束恢复月球模式', after.moonMode==='schematic');
 
 await b.close(); s.close();
