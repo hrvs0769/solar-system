@@ -897,6 +897,7 @@ export class LunarMission extends ModuleBase {
     if(p==='TRANSFER'){ if(this._freeCam){ const c=this.ctx.cameraRig.controls; if(c){ c.enabled=false; if(this._saveMinMax){ c.minDistance=this._saveMinMax.min; c.maxDistance=this._saveMinMax.max; } } this._freeCam=false; } }
     if(p==='TRANSFER'){ this.change.visible=true; this.lineTransfer.visible=true; this._reveal(this.lineTransfer,0); if(this.speedArrows) this.speedArrows.visible=true; this._transSepT=0; }
     if(p==='DEPLOY'){ this._freeArm=null; this.change.visible=true; this._applyDeploy(0);
+      if(this.linePark) this.linePark.visible=false;   // 停泊轨道线会正好穿过主体，出舱段收起来
       if(this.rocket.userData.payl) this.rocket.userData.payl.visible=false; }
     if(p==='LOI'){ this.plumeC.visible=true; this.lineLunar.visible=true; this._reveal(this.lineLunar,0); if(this.speedArrows) this.speedArrows.visible=false; }
     if(p==='LUNAR_ORBIT'){ this.plumeC.visible=false; this._lam=0; this._reveal(this.lineLunar,0); this.lineTransfer.visible=false;
@@ -1312,7 +1313,13 @@ export class LunarMission extends ModuleBase {
     const d=this._camDesired();
     // 竖屏(手机)：水平视野窄，按比例把机位往后退，保证主体不被裁掉
     const el=this.ctx.renderer.domElement, asp=((el&&el.clientWidth)||16)/((el&&el.clientHeight)||9);
-    if(asp<1.02){ const f=Math.min(1.75, 0.86/asp); d.pos.sub(d.tgt).multiplyScalar(f).add(d.tgt); }
+    if(asp<1.02){
+      // 竖屏水平视野窄：宽场景(发射场/俯瞰地球)需要后退，特写镜头(出舱/绕地球/着陆)后退反而让主体变小
+      const wide=(this.phase==='COUNTDOWN'||this.phase==='IGNITION'||this.phase==='LIFTOFF'||this.phase==='SPHERE');
+      const cap=wide?1.75:1.16;
+      const f=Math.min(cap, 0.86/asp);
+      d.pos.sub(d.tgt).multiplyScalar(f).add(d.tgt);
+    }
     // 阶段切换后的 1.1s 内放慢机位过渡(避免每个转场都像"甩镜头")，
     // 其余时间快速跟随；注视点几乎实时跟上，否则快速运动的卫星会被甩出画面。
     this._camEaseT=(this._camEaseT||0)+dt;
