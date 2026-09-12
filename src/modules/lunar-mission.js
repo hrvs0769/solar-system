@@ -9,17 +9,17 @@ import { isKidMode } from '../ui/kid-mode.js';
 
 // —— 电影舞台比例（非 AU，自洽）——
 const RE=1.0, RM=0.27, MD=15.0, PARK=1.35, LUNAR_R=0.6, LUNAR_ORBITS=1;
-const ORDER=['COUNTDOWN','IGNITION','LIFTOFF','SPHERE','STAGE_SEP','EARTH_ORBIT','DEPLOY','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
+const ORDER=['COUNTDOWN','IGNITION','LIFTOFF','STAGE_SEP','SPHERE','EARTH_ORBIT','DEPLOY','TRANSFER','LOI','LUNAR_ORBIT','LANDING','LANDED'];
 const DUR={ COUNTDOWN:4.0, IGNITION:2.0, LIFTOFF:6.5, SPHERE:9, STAGE_SEP:4, EARTH_ORBIT:15, DEPLOY:5.5, TRANSFER:10, LOI:3, LUNAR_ORBIT:11, LANDING:8.5 };
-const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'分级脱离', EARTH_ORBIT:'地球轨道', DEPLOY:'上面级分离 · 嫦娥展开', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
-const PHASE_NAME_KID={ COUNTDOWN:'倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'看看地球', STAGE_SEP:'助推器分离', EARTH_ORBIT:'绕地球飞', DEPLOY:'嫦娥出舱啦', TRANSFER:'飞向月球', LOI:'踩刹车', LUNAR_ORBIT:'绕月飞行', LANDING:'准备降落', LANDED:'着陆月球' };
+const PHASE_NAME={ COUNTDOWN:'发射倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'俯瞰地球', STAGE_SEP:'一级分离', EARTH_ORBIT:'地球轨道', DEPLOY:'上面级分离 · 嫦娥展开', TRANSFER:'地月转移', LOI:'月球制动', LUNAR_ORBIT:'绕月飞行', LANDING:'登月下降', LANDED:'着陆月球' };
+const PHASE_NAME_KID={ COUNTDOWN:'倒计时', IGNITION:'点火', LIFTOFF:'升空', SPHERE:'看看地球', STAGE_SEP:'一级分离', EARTH_ORBIT:'绕地球飞', DEPLOY:'嫦娥出舱啦', TRANSFER:'飞向月球', LOI:'踩刹车', LUNAR_ORBIT:'绕月飞行', LANDING:'准备降落', LANDED:'着陆月球' };
 const WHY={ COUNTDOWN:'一切就绪，等待点火', IGNITION:'火焰 + 导流槽水雾喷涌', LIFTOFF:'突破大气，逐渐摆脱地球引力',
-  SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'分级脱离：多级更省燃料', EARTH_ORBIT:'一级分离 → 抛整流罩 → 绕地球一圈获得入轨速度',
+  SPHERE:'升得更高——你看，地球原来是一个球', STAGE_SEP:'一级分离：油箱空了就扔掉，轻装继续飞', EARTH_ORBIT:'抛整流罩(已出大气层) → 绕地球加速入轨',
   DEPLOY:'上面级分离 → 嫦娥展开太阳翼与天线 · 为什么展开？要在太空里晒太阳发电',
   TRANSFER:'上面级分离，嫦娥卫星出舱 · 为什么不是直线飞？沿椭圆最省燃料', LOI:'为什么必须制动？不减速会飞过月球', LUNAR_ORBIT:'嫦娥绕月探测，寻找落点',
   LANDING:'反推减速 → 缓缓降落', LANDED:'已在月球表面' };
 const WHY_KID={ COUNTDOWN:'数到零，火箭就出发', IGNITION:'点火！屁股后面喷出大火', LIFTOFF:'飞起来啦，越飞越高',
-  SPHERE:'看，地球原来是个大圆球', STAGE_SEP:'用完的助推器掉下去，火箭变轻了', EARTH_ORBIT:'保护罩没用了就扔掉 · 绕地球转一圈跑得更快',
+  SPHERE:'看，地球原来是个大圆球', STAGE_SEP:'第一截火箭用完了，掉下去', EARTH_ORBIT:'保护罩没用了就扔掉 · 绕地球转一圈跑得更快',
   DEPLOY:'嫦娥从火箭里出来啦，张开翅膀晒太阳',
   TRANSFER:'离开地球，向月球飞去 · 走弯路反而更省力', LOI:'快到月球了，要踩刹车，不然会飞过头', LUNAR_ORBIT:'绕着月球转圈圈，找地方降落',
   LANDING:'慢慢往下落，别摔着', LANDED:'稳稳地停在月球上' };
@@ -882,13 +882,10 @@ export class LunarMission extends ModuleBase {
       this.boosters.position.copy(this.rocket.position); this.boosters.quaternion.copy(this.rocket.quaternion); this.boosters.userData.sep=null;
       this._hideLines(); }
     if(p==='IGNITION'){ this.plumeR.visible=true; this.steam.visible=true; this._spawnSteam(); }
-    if(p==='LIFTOFF'){ this.plumeR.visible=true; }
+    if(p==='LIFTOFF'){ this.plumeR.visible=true; this._boostSep=false;
+      if(this.boosters){ this.boosters.visible=true; this.boosters.userData.sep=null; } }
     if(p==='SPHERE'){ this.plumeR.visible=true; }
-    if(p==='STAGE_SEP'){ this.plumeR.visible=false; this.stageSepT=0;
-      if(this.boosters){ this.boosters.userData.sep={t:0};
-        const rp=this.rocket.position, orb=this.boosters.userData.orb||0.0140;
-        [0,1,2,3].forEach(i=>{ const a=i*Math.PI/2+Math.PI/4;
-          this._spawnBurst(rp.clone().add(new THREE.Vector3(Math.cos(a)*orb, 0.010, Math.sin(a)*orb)), 60, 0.26); }); } }
+    if(p==='STAGE_SEP'){ this.plumeR.visible=false; this._stageK=0; this._applyStaging(0); }
     if(p==='EARTH_ORBIT'){ this.change.visible=false; this.rocket.visible=true; if(this.boosters) this.boosters.visible=false; this.linePark.visible=true;
       // 绕地球开放手动视角，但延迟 1.2s 交接：先让导演机位平滑到位，避免进入瞬间硬切
       { const rp=this.rocket.position, out=rp.clone().normalize(), tan=new THREE.Vector3(0,0,1).cross(out).normalize();
@@ -952,7 +949,34 @@ export class LunarMission extends ModuleBase {
     else if(idx>ORDER.indexOf('EARTH_ORBIT')) target=1;
     if(target>(this._fairK||0)+1e-4){ this._fairK=target; this._applyFairing(target); }
   }
-  // —— 一级/二级分离（EARTH_ORBIT 最前段）：上面级留在原点，一级落后并淡出 ——
+  // —— 助推器分离：升空途中触发，之后跨阶段持续更新 ——
+  _startBoosterSep(){
+    if(!this.boosters) return;
+    this.boosters.userData.sep={t:0};
+    const rp=this.rocket.position, orb=this.boosters.userData.orb||0.0140;
+    [0,1,2,3].forEach(i=>{ const ang=i*Math.PI/2+Math.PI/4;
+      this._spawnBurst(rp.clone().add(new THREE.Vector3(Math.cos(ang)*orb, 0.010, Math.sin(ang)*orb)), 60, 0.26); });
+  }
+  _updateBoosters(dt){
+    const sep=this.boosters&&this.boosters.userData?this.boosters.userData.sep:null;
+    if(!sep||!this.boosters.visible) return;
+    // 定格自检(dt=0)时直接推进到"分离中"的状态，否则截图里看不出分离动作
+    if(this._qaLock) dt=Math.max(0, 1.1-sep.t);
+    sep.t+=dt; const t=sep.t;
+    this.boosters.position.copy(this.rocket.position); this.boosters.quaternion.copy(this.rocket.quaternion);
+    const orb=(this.boosters.userData.orb||0.0140);
+    this.boosters.children.forEach((b,i)=>{ const d=b.userData.dir||new THREE.Vector3(1,0,0);
+      b.position.set(d.x*orb,0,d.z*orb)
+        .addScaledVector(d, t*0.085 + t*t*0.02)
+        .add(new THREE.Vector3(0, -t*t*0.055, 0));
+      b.rotation.set(t*2.6*(i%2?1:-1), t*1.7, t*3.3*(i<2?1:-1));
+      const f=Math.max(0, 1-Math.max(0,t-1.7)*0.85);
+      b.children.forEach(c=>{ if(c.material){ if(!c.userData._mt){ c.material=c.material.clone(); c.userData._mt=true; }
+        c.material.transparent=true; c.material.opacity=f; } });
+      if(f<=0) b.visible=false; });
+    if(t>3.6) this.boosters.visible=false;
+  }
+  // —— 一级分离（STAGE_SEP）：上面级留在原点，一级落后并淡出 ——
   _applyStaging(a){
     const u=this.rocket&&this.rocket.userData; if(!u||!u.stage1) return;
     const split=u.stageSplit||0.113;
@@ -966,9 +990,9 @@ export class LunarMission extends ModuleBase {
       u.stage1.visible=f>0.01; }
   }
   _updateStaging(k){
-    const idx=ORDER.indexOf(this.phase), ei=ORDER.indexOf('EARTH_ORBIT');
+    const idx=ORDER.indexOf(this.phase), ei=ORDER.indexOf('STAGE_SEP');
     let target=0;
-    if(this.phase==='EARTH_ORBIT') target=Math.max(0,Math.min(1,(k-0.02)/0.16));
+    if(this.phase==='STAGE_SEP') target=Math.max(0,Math.min(1,(k-0.10)/0.55));
     else if(idx>ei) target=1;
     if(target>(this._stageK||0)+1e-4){ this._stageK=target; this._applyStaging(target); }
   }
@@ -1091,7 +1115,10 @@ export class LunarMission extends ModuleBase {
         const p1=new THREE.Vector3(0,PARK+0.28,0);
         this.rocket.position.copy(p0).lerp(p1, ke);
         this._pointUp(this.rocket, up.clone());
-        this._syncBoosters(); break; }
+        this._syncBoosters();
+        // 助推器在上升途中抛掉（不是入轨后才分离）
+        if(!this._boostSep && k>0.55){ this._boostSep=true; this._startBoosterSep(); }
+        break; }
       case 'SPHERE': {
         // 继续垂直(相机升高揭示球面), 快到末段才轻微开始向下转
         const top=new THREE.Vector3(0,PARK+0.28,0);
@@ -1100,23 +1127,10 @@ export class LunarMission extends ModuleBase {
         this._fadeWenchang(Math.max(0, 1 - Math.min(this.pt/DUR.SPHERE,1)*1.1));   // 升空隐藏平地,只留球面
         this._syncBoosters(); break; }
       case 'STAGE_SEP': {
-        this.rocket.position.copy(new THREE.Vector3(0,PARK,0)); this._pointUp(this.rocket, new THREE.Vector3(0.3,1,0).normalize());
-        // 助推器分离：向后下翻滚坠落淡出
-        const sep=this.boosters&&this.boosters.userData?this.boosters.userData.sep:null;
-        if(sep){ sep.t+=dt; const t=sep.t;
-          this.boosters.position.copy(this.rocket.position); this.boosters.quaternion.copy(this.rocket.quaternion);
-          const orb=(this.boosters.userData.orb||0.0140);
-          this.boosters.children.forEach((b,i)=>{ const d=b.userData.dir||new THREE.Vector3(1,0,0);
-            b.position.set(d.x*orb,0,d.z*orb)
-              .addScaledVector(d, t*0.085 + t*t*0.02)
-              .add(new THREE.Vector3(0, -t*t*0.055, 0));
-            b.rotation.set(t*2.6*(i%2?1:-1), t*1.7, t*3.3*(i<2?1:-1));
-            const f=Math.max(0, 1-Math.max(0,t-1.7)*0.85);
-            b.children.forEach(c=>{ if(c.material){ if(!c.userData._mt){ c.material=c.material.clone(); c.userData._mt=true; }
-              c.material.transparent=true; c.material.opacity=f; } });
-            if(f<=0) b.visible=false; });
-          if(t>3.6) this.boosters.visible=false;
-        }
+        // 一级分离：上面级继续上升，一级落后、翻滚、淡出（助推器已在升空段抛掉，仍在继续坠落）
+        this.rocket.position.copy(new THREE.Vector3(0, PARK+0.28, 0));
+        this._pointUp(this.rocket, up.clone());
+        this._updateStaging(k);
         break; }
       case 'EARTH_ORBIT': {
         // 入轨转弯(前段从竖直逐步转向轨道切线) + 绕地球到 TLI 点
@@ -1180,6 +1194,7 @@ export class LunarMission extends ModuleBase {
     const i=ORDER.indexOf(this.phase);
     if(k>=1 && i>=0 && i<ORDER.length-1) this._setPhase(ORDER[i+1]);
     this._tryArmFreeCam();
+    this._updateBoosters(dt);
     this._updateFlames(dt);
     this._updateStaging(k);
     this._updateFairing(k);
@@ -1203,7 +1218,8 @@ export class LunarMission extends ModuleBase {
   // —— 环境：天空/星空/大气雾/地球月球可见性/阴影范围 ——
   _updateEnv(){
     const ph=this.phase;
-    const groundPh=(ph==='COUNTDOWN'||ph==='IGNITION'||ph==='LIFTOFF');
+    // 一级分离现在发生在上升段(仍在低空)，所以它也算"地面段"：天空仍是蓝的、发射场还在、雾还在
+    const groundPh=(ph==='COUNTDOWN'||ph==='IGNITION'||ph==='LIFTOFF'||ph==='STAGE_SEP');
     const kS=Math.min(this.pt/DUR.SPHERE,1);
     let skyA=1;
     if(ph==='SPHERE') skyA=Math.max(0, 1-kS/0.80);
@@ -1352,9 +1368,12 @@ export class LunarMission extends ModuleBase {
             <div id="mission-prog-dot" style="position:absolute;top:-3px;left:0%;width:12px;height:12px;border-radius:50%;background:#ffb454;border:2px solid #fff;transform:translateX(-50%)"></div>
           </div>
           <div id="mission-dist" style="font-size:10px;color:#9aa7bd">—</div>
-          <div id="mission-hint" style="display:none;font-size:10px;color:#7f8ea6;margin-top:3px">拖动旋转 · 滚轮缩放</div>
+          <div id="mission-hint" style="display:none;font-size:10px;color:#7f8ea6;margin-top:3px">拖动旋转 · 滚轮缩放 · 右键平移</div>
         </div>
-        <button id="mission-stop" style="margin-top:5px;padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8ecf5;cursor:pointer">⏹ 停止任务</button>
+        <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
+          <button id="mission-stop" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8ecf5;cursor:pointer">⏹ 停止任务</button>
+          <button id="mission-reset" style="display:none;padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8ecf5;cursor:pointer">🎯 复位视角</button>
+        </div>
       </div>`;
       document.body.appendChild(h);
       document.getElementById('mission-stop').addEventListener('click',()=>this.cancel());
@@ -1422,16 +1441,29 @@ export class LunarMission extends ModuleBase {
     document.getElementById('mission-success-mask').addEventListener('click',(e)=>{ if(e.target && e.target.id==='mission-success-mask') stay(); });
   }
   _closeSuccess(){ const el=document.getElementById('mission-success'); if(el) el.remove(); }
+  // 把月面观察相机放回默认机位（着陆器在画面中、月面弧线在下方）
+  _resetSurfaceView(){
+    const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls; if(!c) return;
+    const lander=this.change&&this.change.userData&&this.change.userData.lander;
+    const tgt=lander?lander.getWorldPosition(new THREE.Vector3()):(this._landSite||new THREE.Vector3(MD-RM,0,0));
+    c.target.copy(tgt);
+    this.ctx.camera.position.copy(tgt)
+      .addScaledVector(this._landUp||new THREE.Vector3(-1,0,0), 0.05)
+      .addScaledVector(this._landTangent||new THREE.Vector3(0,0,1), 0.28);
+    c.update();
+  }
   // 弹窗关闭后：留在着陆画面上，并允许拖动观察月面/着陆器
   _stayOnSurface(){
     const b=document.getElementById('mission-stop'); if(b) b.textContent='⏹ 退出演示';
     const hint=document.getElementById('mission-hint'); if(hint) hint.style.display='block';
+    const rb=document.getElementById('mission-reset');
+    if(rb){ rb.style.display='inline-block'; rb.onclick=()=>this._resetSurfaceView(); }
     const p=document.getElementById('mission-phase'); if(p) p.textContent=isKidMode()?'在月球上玩一玩':'已在月面 · 可自由观察';
-    const sub=document.getElementById('mission-sub'); if(sub) sub.textContent='拖动旋转 · 滚轮缩放 · 点「退出演示」结束';
+    const sub=document.getElementById('mission-sub'); if(sub) sub.textContent='拖动旋转 · 滚轮缩放 · 右键平移 · 点「退出演示」结束';
     const c=this.ctx.cameraRig&&this.ctx.cameraRig.controls;
     if(c&&!this._freeCam){
       if(!this._saveMinMax) this._saveMinMax={ min:c.minDistance, max:c.maxDistance };
-      c.minDistance=0.05; c.maxDistance=0.9;
+      c.minDistance=0.03; c.maxDistance=3.2;   // 可以贴到着陆器看细节，也能拉远看整颗月球
       const lander=this.change&&this.change.userData&&this.change.userData.lander;
       this._freeTargetObj=lander||this.rocket;
       lander.getWorldPosition(c.target);

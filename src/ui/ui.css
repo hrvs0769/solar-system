@@ -117,10 +117,6 @@ body.kid-mode #vt-prop,
 body.kid-mode #vt-moon,
 body.kid-mode #vt-kepler,
 body.kid-mode #vt-label,
-body.kid-mode #rate-select,
-body.kid-mode #btn-rate-down,
-body.kid-mode #btn-rate-up,
-body.kid-mode #date-input,
 body.kid-mode #zoom-val,
 body.kid-mode #scale-badge,
 body.kid-mode .tab[data-mod="satellite"]{display:none !important}
@@ -128,6 +124,9 @@ body.kid-mode .tab{padding:12px 22px;font-size:calc(17px*var(--ui-s))}
 body.kid-mode .icon-btn,
 body.kid-mode .tc-btn{min-width:52px;min-height:52px;font-size:calc(18px*var(--ui-s))}
 body.kid-mode .tc-btn.big{min-width:68px}
+body.kid-mode #bottom{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden}
+body.kid-mode #bottom::-webkit-scrollbar{display:none}
+body.kid-mode #bottom>*{flex:0 0 auto}
 body.kid-mode #planet-menu .pm-item{min-height:52px;font-size:calc(17px*var(--ui-s))}
 body.kid-mode #info-panel p.desc{font-size:calc(17px*var(--ui-s));line-height:1.75}
 body.kid-mode #info-panel .review{display:none}

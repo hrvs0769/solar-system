@@ -233,13 +233,13 @@ const kidOn = await ev(()=>({
   on: document.body.classList.contains('kid-mode'),
   qualityHidden: getComputedStyle(document.getElementById('btn-quality')).display==='none',
   satHidden: getComputedStyle(document.querySelector('.tab[data-mod="satellite"]')).display==='none',
-  rateHidden: getComputedStyle(document.getElementById('rate-select')).display==='none',
+  rateShown: getComputedStyle(document.getElementById('rate-select')).display!=='none',
   fontSize: parseFloat(getComputedStyle(document.getElementById('ui')).fontSize),
 }));
 check('可开启儿童模式', kidOn.on);
 check('儿童模式隐藏画质等专业控件', kidOn.qualityHidden, JSON.stringify(kidOn));
 check('儿童模式隐藏卫星 Tab', kidOn.satHidden);
-check('儿童模式隐藏倍速选择', kidOn.rateHidden);
+check('儿童模式保留倍速设置（可设置时间倍速）', kidOn.rateShown, JSON.stringify(kidOn));
 check('儿童模式字号放大', kidOn.fontSize > 20, String(kidOn.fontSize));
 const ttsOk = await ev(()=>('speechSynthesis' in window) && !!document.getElementById('btn-voice'));
 check('顶栏有语音朗读开关且浏览器支持', ttsOk);
