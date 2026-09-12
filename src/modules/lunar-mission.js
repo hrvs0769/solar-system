@@ -1272,9 +1272,13 @@ export class LunarMission extends ModuleBase {
           tgt.copy(rp); U.set(0,1,0); }
         break; }
       case 'DEPLOY': {
-        // 出舱展开特写：与转移段同一观察方向，收尾时顺势拉远接上"奔月"大远景
+        // 出舱展开特写：绕着主体自身轴缓慢转过 ~50°，让"翅膀从收拢到展开"从变化的角度看清；
+        // 观察方向仍与转移段一致，收尾顺势拉远接上"奔月"大远景
         const k2=Math.min(this.pt/DUR.DEPLOY,1);
-        pos.copy(this.change.position).addScaledVector(new THREE.Vector3(-0.52,0.40,-0.76).normalize(), 0.62-0.10*k2);
+        const axis=new THREE.Vector3(0,1,0).applyQuaternion(this.change.quaternion);
+        const off=new THREE.Vector3(-0.52,0.40,-0.76).normalize().multiplyScalar(0.62-0.10*k2);
+        off.applyAxisAngle(axis, -0.30+k2*0.90);
+        pos.copy(this.change.position).add(off);
         tgt.copy(this.change.position); U.set(0,1,0); break; }
       case 'TRANSFER': {
         // 长推近：开始广(带地球+月球+椭圆参照=空间线), 越近月球越逼近
